@@ -8,15 +8,16 @@
         "storage"
     ],
     "host_permissions": [
-        "https://www.linkedin.com/jobs/collections/*"
+        "https://www.linkedin.com/jobs/search/*"
     ],
     "content_scripts": [
         {
             "matches": [
-                "https://www.linkedin.com/jobs/collections/*"
+                "https://www.linkedin.com/jobs/search/*"
             ],
             "js": [
-                "content.js"
+                "content.js",
+                "constants.js"
             ],
             "run_at": "document_idle"
         }

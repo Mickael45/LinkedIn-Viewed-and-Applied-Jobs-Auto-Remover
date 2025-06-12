@@ -3,55 +3,21 @@
   const jobsListenedTo = new Set();
   let lastPageStart = -1;
 
-  const getSkillsContainer = () => {
-    const skillsContainer = document.querySelector("#skills-container");
+  const getContainerById = (containerId) => {
+    const container = document.querySelector(`#${containerId}`);
 
-    if (skillsContainer) {
-      skillsContainer.remove();
+    if (container) {
+      container.remove();
     }
 
-    const skillsContainerParent = document.querySelector(
+    const containerParent = document.querySelector(
       ".job-details-fit-level-preferences"
     ).parentElement;
-    const newSkillsContainer = document.createElement("div");
-    newSkillsContainer.id = "skills-container";
-    newSkillsContainer.classList.add("job-details-fit-level-preferences");
-    skillsContainerParent.appendChild(newSkillsContainer);
-    return newSkillsContainer;
-  };
-
-  const getResidencyContainer = () => {
-    const residencyContainer = document.querySelector("#residency-container");
-
-    if (residencyContainer) {
-      residencyContainer.remove();
-    }
-
-    const residencyContainerParent = document.querySelector(
-      ".job-details-fit-level-preferences"
-    ).parentElement;
-    const newResidencyContainer = document.createElement("div");
-    newResidencyContainer.id = "residency-container";
-    newResidencyContainer.classList.add("job-details-fit-level-preferences");
-    residencyContainerParent.appendChild(newResidencyContainer);
-    return newResidencyContainer;
-  };
-
-  const getClearanceContainer = () => {
-    const clearanceContainer = document.querySelector("#clearance-container");
-
-    if (clearanceContainer) {
-      clearanceContainer.remove();
-    }
-
-    const clearanceContainerParent = document.querySelector(
-      ".job-details-fit-level-preferences"
-    ).parentElement;
-    const newClearanceContainer = document.createElement("div");
-    newClearanceContainer.id = "clearance-container";
-    newClearanceContainer.classList.add("job-details-fit-level-preferences");
-    clearanceContainerParent.appendChild(newClearanceContainer);
-    return newClearanceContainer;
+    const newContainer = document.createElement("div");
+    newContainer.id = containerId;
+    newContainer.classList.add("job-details-fit-level-preferences");
+    containerParent.appendChild(newContainer);
+    return newContainer;
   };
 
   const getJobListContainer = () =>
@@ -160,112 +126,94 @@
     });
   };
 
-  const extractResidency = (jobDescription) => {
-    const wordsToLookFor = [
-      "Residency",
-      "Citizenship",
-      "Visa",
-      "Work Permit",
-      "W2",
-      "H1B",
-      "Green Card",
-      "Sponsorship",
-    ];
-
-    const foundWords = wordsToLookFor.filter((word) =>
-      jobDescription.textContent
-        .toLowerCase()
-        .includes(word.toLocaleLowerCase())
+  const getMatchingWords = (text, wordsToLookFor) =>
+    wordsToLookFor.filter((word) =>
+      text.toLowerCase().includes(word.toLocaleLowerCase())
     );
 
+  const createWordButton = (word) => {
+    const wordButton = document.createElement("button");
+
+    wordButton.classList.add(
+      "artdeco-button",
+      "artdeco-button--secondary",
+      "artdeco-button--muted"
+    );
+    wordButton.textContent = word;
+
+    return wordButton;
+  };
+
+  const hoistWords = (text, wordsToLookFor, containerId) => {
+    const foundWords = getMatchingWords(text, wordsToLookFor);
+
     if (foundWords.length > 0) {
-      const residencyContainer = getResidencyContainer();
+      const residencyContainer = getContainerById(containerId);
 
-      foundWords.forEach((skill) => {
-        const wordButton = document.createElement("button");
-
-        wordButton.classList.add(
-          "artdeco-button",
-          "artdeco-button--secondary",
-          "artdeco-button--muted"
-        );
-        wordButton.textContent = skill;
-        residencyContainer.appendChild(wordButton);
-      });
+      foundWords.forEach((word) =>
+        residencyContainer.appendChild(createWordButton(word))
+      );
     }
   };
 
-  const extractClearance = (jobDescription) => {
-    const wordsToLookFor = ["Clearance"];
-
-    const foundWords = wordsToLookFor.filter((skill) =>
-      jobDescription.textContent
-        .toLowerCase()
-        .includes(skill.toLocaleLowerCase())
-    );
-
-    if (foundWords.length > 0) {
-      const clearanceContainer = getClearanceContainer();
-
-      foundWords.forEach((skill) => {
-        const wordButton = document.createElement("button");
-
-        wordButton.classList.add(
-          "artdeco-button",
-          "artdeco-button--secondary",
-          "artdeco-button--muted"
-        );
-        wordButton.textContent = skill;
-        clearanceContainer.appendChild(wordButton);
-      });
-    }
-  };
-
-  const extractSkills = (jobDescription) => {
-    const skillsToLookFor = [
-      "JavaScript",
-      "Python",
-      "Java",
-      "C++",
-      "SQL",
-      "HTML",
-      "CSS",
-      "React",
-      "Node.js",
-      "Angular",
+  const extractSalary = (text) => {
+    const patterns = [
+      /\$[\d,\.]+[Kk]?(?:\s*\/yr)?\s*[-–]\s*\$[\d,\.]+[Kk]?(?:\s*\/yr)?/g,
+      /\$[\d,\.]+\s*\/hr/gi,
+      /\$[\d,\.]+[Kk]?(?:\s*\/yr)?/g,
     ];
 
-    const foundSkills = skillsToLookFor.filter((skill) => {
-      console.log(`Checking if job description contains skill: ${skill}`);
-      return jobDescription.textContent
-        .toLowerCase()
-        .includes(skill.toLocaleLowerCase());
-    });
+    let normalizedParts = [];
 
-    if (foundSkills.length > 0) {
-      const skillsContainer = getSkillsContainer();
-      console.log("Found skills:", foundSkills);
-      foundSkills.forEach((skill) => {
-        const skillButton = document.createElement("button");
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        let salary = match[0].replace(/\s+/g, ""); // remove spaces
+        if (salary.toLowerCase().includes("/hr")) {
+          return salary.replace(/\/hr/i, "/hr"); // normalize to lowercase
+        }
 
-        skillButton.classList.add(
-          "artdeco-button",
-          "artdeco-button--secondary",
-          "artdeco-button--muted"
-        );
-        skillButton.textContent = skill;
-        skillsContainer.appendChild(skillButton);
-      });
+        const rangeParts = salary.split(/[-–]/);
+        normalizedParts = rangeParts.map((part) => {
+          // Remove $ and commas
+          let numStr = part.replace(/\$|,/g, "").toUpperCase();
+          let num = 0;
+
+          if (numStr.includes("K")) {
+            num = parseFloat(numStr);
+          } else {
+            num = parseFloat(numStr) / 1000;
+          }
+
+          return `$${num.toFixed(1)}K/yr`;
+        });
+      }
+    }
+
+    if (normalizedParts.length > 0) {
+      const salaryContainer = getContainerById("salary-container");
+      console.log(normalizedParts);
+      const salaryButton = createWordButton(normalizedParts.join(" - "));
+      salaryContainer.appendChild(salaryButton);
     }
   };
 
   const extractContentFromJobDescription = () => {
     console.log("Extracting content from job description...");
-    const jobDescription = document.getElementById("job-details");
+    const jobDescription = document.getElementById("job-details").textContent;
 
-    extractSkills(jobDescription);
-    extractClearance(jobDescription);
-    extractResidency(jobDescription);
+    hoistWords(jobDescription, window.constants.skills, "skills-container");
+    hoistWords(
+      jobDescription,
+      window.constants.clearanceWords,
+      "clearance-container"
+    );
+    hoistWords(
+      jobDescription,
+      window.constants.residencyWords,
+      "residency-container"
+    );
+    extractSalary(jobDescription, "salary-container");
   };
 
   const waitForJobListContainer = () => {
