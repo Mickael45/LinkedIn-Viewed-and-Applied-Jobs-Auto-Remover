@@ -4,6 +4,7 @@ import {
   OLLAMA_CONFIG,
   GEMINI_CONFIG,
 } from "./config";
+import { retry } from "./retry";
 
 class LruCache<K, V> {
   private maxSize: number;
@@ -63,7 +64,8 @@ async function getCacheKey(
 
 async function _callOllama(
   prompt: string,
-  format: "json" | "text"
+  format: "json" | "text",
+  signal: AbortSignal
 ): Promise<string> {
   const requestBody = {
     model: OLLAMA_CONFIG.MODEL,
@@ -79,6 +81,7 @@ async function _callOllama(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
+    signal,
   });
 
   if (!response.ok) {
@@ -96,7 +99,8 @@ async function _callOllama(
 
 async function _callGemini(
   prompt: string,
-  format: "json" | "text"
+  format: "json" | "text",
+  signal: AbortSignal
 ): Promise<string> {
   const requestBody: any = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -112,6 +116,7 @@ async function _callGemini(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
+    signal,
   });
   if (!response.ok) {
     const errorText = await response.text();
@@ -130,7 +135,8 @@ async function _callGemini(
 
 export async function callLlm(
   prompt: string,
-  format: "json" | "text"
+  format: "json" | "text",
+  signal: AbortSignal
 ): Promise<string> {
   const cacheKey = await getCacheKey(prompt, format);
 
@@ -139,24 +145,29 @@ export async function callLlm(
     return cachedResponse;
   }
 
-  let response: string;
-  try {
+  const apiCallFn = () => {
     switch (ACTIVE_LLM_PROVIDER) {
       case LlmProvider.OLLAMA:
-        response = await _callOllama(prompt, format);
-        break;
+        return _callOllama(prompt, format, signal);
       case LlmProvider.GEMINI:
-        response = await _callGemini(prompt, format);
-        break;
+        return _callGemini(prompt, format, signal);
       default:
-        console.error("Unknown LLM_PROVIDER configured:", ACTIVE_LLM_PROVIDER);
         throw new Error("Invalid LLM provider configured.");
     }
+  };
 
+  try {
+    const response = await retry(
+      apiCallFn,
+      { retries: 3, delay: 1000 },
+      signal
+    );
     llmCache.set(cacheKey, response);
     return response;
   } catch (error) {
-    console.error("Failed to call LLM provider:", error);
+    if (!(error instanceof DOMException && error.name === "AbortError")) {
+      console.error("Failed to call LLM provider after all retries:", error);
+    }
     throw error;
   }
 }
