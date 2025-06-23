@@ -1,0 +1,38 @@
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment variables
+.env
+.env.local
+.env.*.local
+
+# Node.js dependencies
+node_modules/
+
+# Vite build output directory
+dist/
+dist-ssr/
+
+# Unpacked extension folder for testing (if you use a different name)
+unpacked/
+build/
+
+# IDE and editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Test reports
+/coverage
+.nyc_output

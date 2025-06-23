@@ -1,0 +1,23 @@
+{
+  "name": "linkedin-joblist-enhancer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:content": "vite build --config vite.config.content.ts",
+    "build:background": "vite build --config vite.config.background.ts",
+    "build": "npm run build:content && npm run build:background",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.326",
+    "@types/json-schema": "^7.0.15",
+    "@types/node": "^24.0.3",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "zod": "^3.25.67"
+  }
+}

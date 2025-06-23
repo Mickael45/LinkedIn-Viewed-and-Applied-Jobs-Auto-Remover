@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "LinkedIn Job Analyzer and Summarizer",
+    "version": "1.0.0",
+    "description": "Intelligently analyzes and summarizes LinkedIn job descriptions with AI-powered insights.",
+    "permissions": [
+        "storage",
+        "webNavigation"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://*.linkedin.com/jobs/search/*"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ]
+}
