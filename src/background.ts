@@ -57,9 +57,8 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
         type: CommandType.RESET_PROCESSOR,
         url: details.url,
       });
-    } else if (
-      prevParams.get("currentJobId") !== currentParams.get("currentJobId")
-    ) {
+    }
+    if (prevParams.get("currentJobId") !== currentParams.get("currentJobId")) {
       chrome.tabs.sendMessage(details.tabId, {
         type: CommandType.EXTRACT_JOB_CONTENT,
       });
