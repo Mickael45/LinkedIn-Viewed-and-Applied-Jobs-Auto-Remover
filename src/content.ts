@@ -1,5 +1,4 @@
 import { JobProcessor } from "./jobProcessor";
-import { StorageManager } from "./storageManager";
 import { type CommandMessage, CommandType } from "./shared-types";
 
 class ContentController {
@@ -29,6 +28,7 @@ class ContentController {
   private listenForCommands(): void {
     chrome.runtime.onMessage.addListener(
       (message: CommandMessage, _, sendResponse) => {
+        console.log("Received command message:", message);
         switch (message.type) {
           case CommandType.RESET_PROCESSOR:
             this.reinitializeProcessor().then(() => {
@@ -47,10 +47,7 @@ class ContentController {
 
   private async reinitializeProcessor(): Promise<void> {
     this.processor?.disconnect();
-
-    const dismissedIds = await StorageManager.getDismissedJobs();
-
-    this.processor = new JobProcessor(dismissedIds);
+    this.processor = new JobProcessor();
   }
 }
 

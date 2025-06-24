@@ -125,7 +125,8 @@ export class UIManager {
     header.className = "jarvis-header";
     header.innerHTML = `<span class="jarvis-title">J.A.R.V.I.S. Analysis</span>`;
     contentWrapper.appendChild(header);
-
+    console.log("Rendering job summary content...");
+    console.log(summaryData);
     this.renderSection(contentWrapper, "Must-Haves", summaryData.mustHaves);
     this.renderSection(contentWrapper, "Preferred", summaryData.preferred);
     this.renderSection(

@@ -3,6 +3,12 @@ export const LlmProvider = {
   GEMINI: "GEMINI",
 } as const;
 
+export const DATA_TTL = 1000 * 60 * 60 * 24 * 90;
+export const DATA_MAX_SIZE = 1000;
+export const NINETY_DAYS_IN_MS = 1 * 1000;
+export const CACHE_MAX_SIZE = 1000;
+export const CACHE_PRUNE_ALARM_NAME = "llmCachePruneAlarm";
+
 export type LlmProvider = (typeof LlmProvider)[keyof typeof LlmProvider];
 
 export const ACTIVE_LLM_PROVIDER: LlmProvider = LlmProvider.GEMINI;
@@ -13,7 +19,7 @@ export const OLLAMA_CONFIG = {
 };
 
 export const GEMINI_CONFIG = {
-  API_KEY: "YOUR_GEMINI_API_KEY_HERE",
+  API_KEY: "AIzaSyDCyhkrBUlyuCVop1qkyJ5LRL3gKXVlGi0",
   MODEL: "gemini-1.5-pro",
   get API_URL() {
     if (!this.API_KEY) {

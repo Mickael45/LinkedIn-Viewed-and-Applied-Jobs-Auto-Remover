@@ -7,6 +7,7 @@ export type LlmTaskType = (typeof LlmTaskType)[keyof typeof LlmTaskType];
 export type LlmTaskRequest = {
   type: typeof LlmTaskType.EXTRACT_JOB_SUMMARY;
   text: string;
+  jobId?: string;
 };
 
 export const CommandType = {
@@ -15,5 +16,5 @@ export const CommandType = {
 } as const;
 
 export type CommandMessage =
-  | { type: typeof CommandType.RESET_PROCESSOR; url: string }
+  | { type: typeof CommandType.RESET_PROCESSOR }
   | { type: typeof CommandType.EXTRACT_JOB_CONTENT };

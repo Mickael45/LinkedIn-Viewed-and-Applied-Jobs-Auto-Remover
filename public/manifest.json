@@ -5,7 +5,9 @@
     "description": "Intelligently analyzes and summarizes LinkedIn job descriptions with AI-powered insights.",
     "permissions": [
         "storage",
-        "webNavigation"
+        "webNavigation",
+        "alarms",
+        "tabs"
     ],
     "background": {
         "service_worker": "background.js",

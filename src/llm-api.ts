@@ -1,3 +1,4 @@
+import { LruCache } from "./cache";
 import {
   ACTIVE_LLM_PROVIDER,
   LlmProvider,
@@ -6,60 +7,11 @@ import {
 } from "./config";
 import { retry } from "./retry";
 
-class LruCache<K, V> {
-  private maxSize: number;
-  private cache: Map<K, V>;
-
-  constructor(maxSize: number = 50) {
-    this.maxSize = maxSize;
-    this.cache = new Map<K, V>();
-  }
-
-  get(key: K): V | undefined {
-    const item = this.cache.get(key);
-    if (item) {
-      this.cache.delete(key);
-      this.cache.set(key, item);
-    }
-    return item;
-  }
-
-  set(key: K, value: V): void {
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.maxSize) {
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey === undefined) {
-        throw new Error("Cache is empty, cannot evict oldest item.");
-      }
-      this.cache.delete(oldestKey);
-    }
-    this.cache.set(key, value);
-  }
-
-  has(key: K): boolean {
-    return this.cache.has(key);
-  }
-}
-
-const llmCache = new LruCache<string, string>(50);
-
-async function _generateHash(data: string): Promise<string> {
-  const messageBuffer = new TextEncoder().encode(data);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", messageBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return hashHex;
-}
-
 async function getCacheKey(
-  prompt: string,
+  jobId: string,
   format: "json" | "text"
 ): Promise<string> {
-  const promptHash = await _generateHash(prompt);
-  return `${format}:${promptHash}`;
+  return `${format}:${jobId}`;
 }
 
 async function _callOllama(
@@ -138,9 +90,24 @@ export async function callLlm(
   format: "json" | "text",
   signal: AbortSignal
 ): Promise<string> {
-  const cacheKey = await getCacheKey(prompt, format);
+  console.log("Calling LLM with prompt:", prompt);
+  const jobIdStorage = await chrome.storage.session.get("currentJobIdStorage");
+  const jobId = jobIdStorage.currentJobIdStorage;
 
-  const cachedResponse = llmCache.get(cacheKey);
+  console.log(jobIdStorage);
+  console.log(`Current job ID from storage: ${jobId}`);
+
+  if (!jobId) {
+    throw new Error("No job ID found in the current tab URL.");
+  }
+
+  console.log(`Job ID: ${jobId}, Format: ${format}`);
+
+  const cacheKey = await getCacheKey(jobId, format);
+
+  console.log(`Cache key: ${cacheKey}`);
+  const cachedResponse = await LruCache.getCacheEntry(cacheKey);
+
   if (cachedResponse) {
     return cachedResponse;
   }
@@ -162,7 +129,8 @@ export async function callLlm(
       { retries: 3, delay: 1000 },
       signal
     );
-    llmCache.set(cacheKey, response);
+    console.log("Song LLM response:", response);
+    await LruCache.addToCache(cacheKey, response);
     return response;
   } catch (error) {
     if (!(error instanceof DOMException && error.name === "AbortError")) {

@@ -8,7 +8,6 @@ export class JobProcessor {
   private waitController: AbortController | null = null;
   private uiManager: UIManager | null = null;
   private jobListManager: JobListManager | null = null;
-  private dismissedJobIds: Set<string>;
 
   private readonly SELECTORS = {
     jobList: "[data-results-list-top-scroll-sentinel] + ul",
@@ -24,8 +23,7 @@ export class JobProcessor {
 `,
     summaryContainerId: "jarvis-summary-container",
   };
-  constructor(dismissedJobIds: Set<string>) {
-    this.dismissedJobIds = dismissedJobIds;
+  constructor() {
     this.init();
   }
 
@@ -45,7 +43,6 @@ export class JobProcessor {
 
       this.jobListManager = new JobListManager(
         jobList,
-        this.dismissedJobIds,
         {
           onDismiss: this.handleJobDismiss,
           onUndo: this.handleJobDismissUndo,
@@ -91,27 +88,36 @@ export class JobProcessor {
         type: LlmTaskType.EXTRACT_JOB_SUMMARY,
         text: jobDescription,
       });
+      console.log("Received summary data:", summaryData);
       if (summaryData?.success) this.uiManager.displaySummary(summaryData.data);
     } catch (error) {
       console.error("A background script request failed:", error);
     }
   }
 
-  private handleJobDismiss = (jobId: string, jobItem: HTMLLIElement): void => {
-    if (this.dismissedJobIds.has(jobId)) return;
+  private handleJobDismiss = async (
+    jobId: string,
+    jobItem: HTMLLIElement
+  ): Promise<void> => {
+    const dismissedJobs = await StorageManager.getDismissedJobs();
 
-    this.dismissedJobIds.add(jobId);
+    console.log("Before handleJobDismiss");
+    if (dismissedJobs.has(jobId)) return;
+    console.log("After handleJobDismiss");
+    await StorageManager.addDismissedJob(jobId);
     this.jobListManager?.applyDismissedStyle(jobItem);
     StorageManager.addDismissedJob(jobId);
   };
 
-  private handleJobDismissUndo = (
+  private handleJobDismissUndo = async (
     jobId: string,
     jobItem: HTMLLIElement
-  ): void => {
-    if (!this.dismissedJobIds.has(jobId)) return;
-
-    this.dismissedJobIds.delete(jobId);
+  ): Promise<void> => {
+    const dismissedJobs = await StorageManager.getDismissedJobs();
+    console.log("Before handleJobDismissUndo");
+    if (!dismissedJobs.has(jobId)) return;
+    console.log("After handleJobDismissUndo");
+    await StorageManager.removeDismissedJob(jobId);
     this.jobListManager?.removeDismissedStyle(jobItem);
     StorageManager.removeDismissedJob(jobId);
   };

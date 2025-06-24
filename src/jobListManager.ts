@@ -1,3 +1,5 @@
+import { StorageManager } from "./storageManager";
+
 interface JobListManagerCallbacks {
   onDismiss: (jobId: string, jobItem: HTMLLIElement) => void;
   onUndo: (jobId: string, jobItem: HTMLLIElement) => void;
@@ -13,24 +15,17 @@ export class JobListManager {
   private domObserver: MutationObserver | null = null;
   private clickListenerController: AbortController | null = null;
   private readonly container: HTMLElement;
-  private readonly dismissedJobIds: Set<string>;
   private readonly callbacks: JobListManagerCallbacks;
   private readonly SELECTORS: JobListManagerSelectors;
 
   constructor(
     container: HTMLElement,
-    dismissedJobIds: Set<string>,
     callbacks: JobListManagerCallbacks,
     SELECTORS: JobListManagerSelectors
   ) {
     this.container = container;
-    this.dismissedJobIds = dismissedJobIds;
     this.callbacks = callbacks;
     this.SELECTORS = SELECTORS;
-  }
-
-  public getDismissedJobIds(): Set<string> {
-    return new Set(this.dismissedJobIds);
   }
 
   public start(): void {
@@ -79,18 +74,23 @@ export class JobListManager {
     jobItem.style.border = "";
   };
 
-  private scanAndStyleJob = (jobItem: HTMLLIElement): void => {
+  private scanAndStyleJob = async (jobItem: HTMLLIElement): Promise<void> => {
     const jobId = jobItem.dataset.occludableJobId;
     if (!jobId) {
       console.warn("Job item missing occludableJobId:", jobItem);
       return;
     }
+
+    const dismissedJobs = await StorageManager.getDismissedJobs();
+
     if (jobItem.innerHTML.toLowerCase().includes("applied")) {
       this.applyAppliedStyle(jobItem);
     }
-    if (this.dismissedJobIds.has(jobId)) {
+    console.log("Before check dismissed jobs");
+    if (dismissedJobs.has(jobId)) {
       this.applyDismissedStyle(jobItem);
     }
+    console.log("After check dismissed jobs");
   };
 
   private handleClick = (event: MouseEvent): void => {
