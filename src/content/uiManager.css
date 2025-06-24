@@ -1,34 +1,34 @@
 :root {
-    --jarvis-bg-color: #1F2937;
-    --jarvis-panel-bg-color: #374151;
-    --jarvis-border-color: #4B5563;
-    --jarvis-text-primary: #F9FAFB;
-    --jarvis-text-secondary: #D1D5DB;
-    --jarvis-accent-color: #818CF8;
-    --jarvis-error-color: #F87171;
-    --jarvis-tag-bg: #4B5563;
-    --jarvis-tag-text: #E5E7EB;
-    --jarvis-shimmer-color: rgba(255, 255, 255, 0.08);
+    --bg-color: #1F2937;
+    --panel-bg-color: #374151;
+    --border-color: #4B5563;
+    --text-primary: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --accent-color: #818CF8;
+    --error-color: #F87171;
+    --tag-bg: #4B5563;
+    --tag-text: #E5E7EB;
+    --shimmer-color: rgba(255, 255, 255, 0.08);
 }
 
 @media (prefers-color-scheme: light) {
     :root {
-        --jarvis-bg-color: #F9FAFB;
-        --jarvis-panel-bg-color: #F3F4F6;
-        --jarvis-border-color: #E5E7EB;
-        --jarvis-text-primary: #1F2937;
-        --jarvis-text-secondary: #4B5563;
-        --jarvis-tag-bg: #E5E7EB;
-        --jarvis-tag-text: #374151;
-        --jarvis-shimmer-color: rgba(0, 0, 0, 0.05);
+        --bg-color: #F9FAFB;
+        --panel-bg-color: #F3F4F6;
+        --border-color: #E5E7EB;
+        --text-primary: #1F2937;
+        --text-secondary: #4B5563;
+        --tag-bg: #E5E7EB;
+        --tag-text: #374151;
+        --shimmer-color: rgba(0, 0, 0, 0.05);
     }
 }
 
-.jarvis-summary-container {
-    background-color: var(--jarvis-bg-color);
-    color: var(--jarvis-text-primary);
+.summary-container {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
     padding: 20px;
-    border: 1px solid var(--jarvis-border-color);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     margin: 20px 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -36,47 +36,47 @@
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-.jarvis-summary-container .jarvis-content {
+.summary-container .content {
     animation: fadeIn 0.5s ease-in-out;
 }
 
-.jarvis-header {
+.header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
     padding-bottom: 10px;
-    border-bottom: 1px solid var(--jarvis-border-color);
+    border-bottom: 1px solid var(--border-color);
     transition: border-color 0.3s;
 }
 
-.jarvis-title {
+.title {
     font-size: 1.8rem;
     font-weight: 600;
     letter-spacing: 1px;
-    color: var(--jarvis-text-primary);
+    color: var(--text-primary);
 }
 
-.jarvis-section {
+.section {
     margin-bottom: 20px;
 }
 
-.jarvis-section-title {
+.section-title {
     font-size: 1.6rem;
     font-weight: 500;
-    color: var(--jarvis-text-secondary);
+    color: var(--text-secondary);
     margin-bottom: 12px;
 }
 
-.jarvis-tags-container {
+.tags-container {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.jarvis-tag {
-    background-color: var(--jarvis-tag-bg);
-    color: var(--jarvis-tag-text);
+.tag {
+    background-color: var(--tag-bg);
+    color: var(--tag-text);
     padding: 6px 12px;
     border-radius: 16px;
     font-size: 1.4rem;
@@ -84,37 +84,37 @@
     transition: background-color 0.3s, color 0.3s;
 }
 
-.jarvis-error-content {
+.error-content {
     padding: 10px;
 }
 
-.jarvis-error-content h4 {
-    color: var(--jarvis-error-color);
+.error-content h4 {
+    color: var(--error-color);
     font-size: 1.6rem;
     margin-bottom: 8px;
 }
 
-.jarvis-error-content p {
+.error-content p {
     font-size: 1.4rem;
-    color: var(--jarvis-text-secondary);
+    color: var(--text-secondary);
 }
 
-.jarvis-loading-skeleton {
+.loading-skeleton {
     position: relative;
     overflow: hidden;
-    background-color: var(--jarvis-panel-bg-color);
+    background-color: var(--panel-bg-color);
     border-radius: 8px;
     transition: background-color 0.3s;
 }
 
-.jarvis-loading-skeleton::after {
+.loading-skeleton::after {
     content: '';
     position: absolute;
     top: 0;
     left: -150%;
     width: 150%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, var(--jarvis-shimmer-color), transparent);
+    background: linear-gradient(90deg, transparent, var(--shimmer-color), transparent);
     animation: shimmer 1.5s infinite;
 }
 
@@ -126,7 +126,7 @@
     animation: gemini-sweep 2s linear infinite, fadeIn 0.5s;
 }
 
-.jarvis-loading-bar {
+.loading-bar {
     width: 100%;
     height: 4px;
     margin-bottom: 20px;
@@ -134,13 +134,13 @@
     overflow: hidden;
 }
 
-.jarvis-loading-text {
+.loading-text {
     height: 20px;
     width: 30%;
     margin-bottom: 12px;
 }
 
-.jarvis-loading-tag {
+.loading-tag {
     height: 30px;
     width: 100px;
     border-radius: 16px;

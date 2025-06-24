@@ -1,18 +1,11 @@
-import { LruCache } from "./cache";
 import {
   ACTIVE_LLM_PROVIDER,
+  GEMINI_CONFIG,
   LlmProvider,
   OLLAMA_CONFIG,
-  GEMINI_CONFIG,
-} from "./config";
-import { retry } from "./retry";
-
-async function getCacheKey(
-  jobId: string,
-  format: "json" | "text"
-): Promise<string> {
-  return `${format}:${jobId}`;
-}
+} from "../config";
+import { lruCache } from "../storage/LruCache";
+import { retry } from "../utils/retry";
 
 async function _callOllama(
   prompt: string,
@@ -58,11 +51,9 @@ async function _callGemini(
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0,
+      responseMimeType: format === "json" ? "application/json" : "text/plain",
     },
   };
-  if (format === "json") {
-    requestBody.generationConfig.responseMimeType = "application/json";
-  }
 
   const response = await fetch(GEMINI_CONFIG.API_URL, {
     method: "POST",
@@ -70,14 +61,16 @@ async function _callGemini(
     body: JSON.stringify(requestBody),
     signal,
   });
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-    return data.candidates[0].content.parts[0].text;
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (content) {
+    return content;
   }
 
   const errorMessage =
@@ -87,26 +80,12 @@ async function _callGemini(
 
 export async function callLlm(
   prompt: string,
+  jobId: string,
   format: "json" | "text",
   signal: AbortSignal
 ): Promise<string> {
-  console.log("Calling LLM with prompt:", prompt);
-  const jobIdStorage = await chrome.storage.session.get("currentJobIdStorage");
-  const jobId = jobIdStorage.currentJobIdStorage;
-
-  console.log(jobIdStorage);
-  console.log(`Current job ID from storage: ${jobId}`);
-
-  if (!jobId) {
-    throw new Error("No job ID found in the current tab URL.");
-  }
-
-  console.log(`Job ID: ${jobId}, Format: ${format}`);
-
-  const cacheKey = await getCacheKey(jobId, format);
-
-  console.log(`Cache key: ${cacheKey}`);
-  const cachedResponse = await LruCache.getCacheEntry(cacheKey);
+  const cacheKey = `${format}:${jobId}`;
+  const cachedResponse = await lruCache.get(cacheKey);
 
   if (cachedResponse) {
     return cachedResponse;
@@ -119,23 +98,12 @@ export async function callLlm(
       case LlmProvider.GEMINI:
         return _callGemini(prompt, format, signal);
       default:
-        throw new Error("Invalid LLM provider configured.");
+        const exhaustiveCheck: never = ACTIVE_LLM_PROVIDER;
+        throw new Error(`Invalid LLM provider: ${exhaustiveCheck}`);
     }
   };
 
-  try {
-    const response = await retry(
-      apiCallFn,
-      { retries: 3, delay: 1000 },
-      signal
-    );
-    console.log("Song LLM response:", response);
-    await LruCache.addToCache(cacheKey, response);
-    return response;
-  } catch (error) {
-    if (!(error instanceof DOMException && error.name === "AbortError")) {
-      console.error("Failed to call LLM provider after all retries:", error);
-    }
-    throw error;
-  }
+  const response = await retry(apiCallFn, { retries: 3, delay: 1000 }, signal);
+  await lruCache.set(cacheKey, response);
+  return response;
 }

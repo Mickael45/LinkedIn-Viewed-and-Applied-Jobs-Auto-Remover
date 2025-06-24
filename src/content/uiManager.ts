@@ -1,9 +1,11 @@
-import type {
-  JobSummaryData,
-  SalaryData,
-  UIManagerSelectors,
-} from "./jobSummary.types";
+import type { JobSummaryData, SalaryData } from "../shared/schemas";
 import styles from "./uiManager.css?raw";
+
+interface UIManagerSelectors {
+  jobDetailPanel: string;
+  panelContainerAnchor: string;
+  summaryContainerId: string;
+}
 
 export class UIManager {
   private readonly SELECTORS: UIManagerSelectors;
@@ -11,12 +13,12 @@ export class UIManager {
 
   constructor(selectors: UIManagerSelectors) {
     this.SELECTORS = selectors;
+    this.injectStyles();
   }
 
   public displaySummary(summaryData: JobSummaryData): void {
     const mainContainer = this.getOrCreateMainContainer();
     if (!mainContainer) return;
-
     this.renderContent(mainContainer, summaryData);
   }
 
@@ -25,44 +27,36 @@ export class UIManager {
     if (!mainContainer) return;
 
     mainContainer.innerHTML = `
-        <div class="jarvis-header">
-            <span class="jarvis-title">J.A.R.V.I.S.</span>
+      <div class="content">
+        <div class="header">
+            <span class="title">Analyser</span>
         </div>
-        <div class="jarvis-error-content">
+        <div class="error-content">
             <h4>Analysis Failed</h4>
-            <p></p>
+            <p title="${message}">The AI core could not process the job description. This can happen with unusual formatting or network errors. Please try another listing.</p>
         </div>
+      </div>
     `;
-    const errorParagraph = mainContainer.querySelector(
-      ".jarvis-error-content p"
-    );
-    if (errorParagraph) errorParagraph.textContent = message;
   }
 
   public clearAll(): void {
-    const mainContainer = document.getElementById(
-      this.SELECTORS.summaryContainerId
-    );
-    mainContainer?.remove();
+    document.getElementById(this.SELECTORS.summaryContainerId)?.remove();
   }
 
   private injectStyles(): void {
-    if (this.stylesInjected) {
-      return;
-    }
+    if (this.stylesInjected || document.getElementById("styles")) return;
     try {
       const styleElement = document.createElement("style");
+      styleElement.id = "styles";
       styleElement.textContent = styles;
       document.head.appendChild(styleElement);
       this.stylesInjected = true;
     } catch (error) {
-      console.error("J.A.R.V.I.S. UIManager: Failed to inject styles.", error);
+      console.error("UIManager: Failed to inject styles.", error);
     }
   }
 
   private getOrCreateMainContainer(): HTMLElement | null {
-    this.injectStyles();
-
     let container = document.getElementById(this.SELECTORS.summaryContainerId);
     if (container) {
       container.innerHTML = "";
@@ -74,16 +68,13 @@ export class UIManager {
       this.SELECTORS.panelContainerAnchor
     )?.parentElement;
     if (!parentElement) {
-      console.error(
-        "UIManager: Could not find a suitable anchor to inject the UI."
-      );
+      console.error("UIManager: Could not find an anchor to inject the UI.");
       return null;
     }
 
     container = document.createElement("div");
     container.id = this.SELECTORS.summaryContainerId;
-    container.className = "jarvis-summary-container";
-
+    container.className = "summary-container";
     parentElement.prepend(container);
     return container;
   }
@@ -93,21 +84,21 @@ export class UIManager {
     if (!mainContainer) return;
 
     mainContainer.innerHTML = `
-        <div class="jarvis-loading-bar">
+        <div class="loading-bar">
             <div class="gemini-loader"></div>
         </div>
-        <p style="text-align: center; margin: 16px 0 24px; font-style: italic; font-size: 1.4rem; color: var(--jarvis-text-secondary); animation: fadeIn 1s ease-in-out;">Analyzing job requirements...</p>
-        <div class="jarvis-loading-skeleton jarvis-loading-text"></div>
-        <div class="jarvis-tags-container">
-            <div class="jarvis-loading-skeleton jarvis-loading-tag"></div>
-            <div class="jarvis-loading-skeleton jarvis-loading-tag"></div>
-            <div class="jarvis-loading-skeleton jarvis-loading-tag"></div>
+        <p style="text-align: center; margin: 16px 0 24px; font-style: italic; font-size: 1.4rem; color: var(--text-secondary); animation: fadeIn 1s ease-in-out;">Analyzing job requirements...</p>
+        <div class="loading-skeleton loading-text"></div>
+        <div class="tags-container">
+            <div class="loading-skeleton loading-tag"></div>
+            <div class="loading-skeleton loading-tag"></div>
+            <div class="loading-skeleton loading-tag"></div>
         </div>
         <br/>
-        <div class="jarvis-loading-skeleton jarvis-loading-text" style="width: 40%;"></div>
-        <div class="jarvis-tags-container">
-            <div class="jarvis-loading-skeleton jarvis-loading-tag"></div>
-            <div class="jarvis-loading-skeleton jarvis-loading-tag" style="width: 120px;"></div>
+        <div class="loading-skeleton loading-text" style="width: 40%;"></div>
+        <div class="tags-container">
+            <div class="loading-skeleton loading-tag"></div>
+            <div class="loading-skeleton loading-tag" style="width: 120px;"></div>
         </div>
       `;
   }
@@ -119,14 +110,13 @@ export class UIManager {
     mainContainer.innerHTML = "";
 
     const contentWrapper = document.createElement("div");
-    contentWrapper.className = "jarvis-content";
+    contentWrapper.className = "content";
 
     const header = document.createElement("div");
-    header.className = "jarvis-header";
-    header.innerHTML = `<span class="jarvis-title">J.A.R.V.I.S. Analysis</span>`;
+    header.className = "header";
+    header.innerHTML = `<span class="title">Analysis</span>`;
     contentWrapper.appendChild(header);
-    console.log("Rendering job summary content...");
-    console.log(summaryData);
+
     this.renderSection(contentWrapper, "Must-Haves", summaryData.mustHaves);
     this.renderSection(contentWrapper, "Preferred", summaryData.preferred);
     this.renderSection(
@@ -147,15 +137,15 @@ export class UIManager {
     if (!items || items.length === 0) return;
 
     const sectionEl = document.createElement("div");
-    sectionEl.className = "jarvis-section";
+    sectionEl.className = "section";
 
     const titleElement = document.createElement("h3");
-    titleElement.className = "jarvis-section-title";
+    titleElement.className = "section-title";
     titleElement.textContent = title;
     sectionEl.appendChild(titleElement);
 
     const tagsContainer = document.createElement("div");
-    tagsContainer.className = "jarvis-tags-container";
+    tagsContainer.className = "tags-container";
 
     items.forEach((item) => {
       tagsContainer.appendChild(this.createTag(item));
@@ -174,17 +164,17 @@ export class UIManager {
     if (minSalary && maxSalary) {
       salaryText = `${this.formatCurrency(
         minSalary,
-        currency
-      )} - ${this.formatCurrency(maxSalary, currency)} ${period}`;
+        currency || ""
+      )} - ${this.formatCurrency(maxSalary, currency || "")} ${period}`;
     } else if (minSalary) {
       salaryText = `Starts at ${this.formatCurrency(
         minSalary,
-        currency
+        currency || ""
       )} ${period}`;
     } else if (maxSalary) {
       salaryText = `Up to ${this.formatCurrency(
         maxSalary,
-        currency
+        currency || ""
       )} ${period}`;
     }
 
@@ -199,7 +189,7 @@ export class UIManager {
 
   private createTag(text: string): HTMLElement {
     const tag = document.createElement("span");
-    tag.className = "jarvis-tag";
+    tag.className = "tag";
     tag.textContent = text;
     return tag;
   }

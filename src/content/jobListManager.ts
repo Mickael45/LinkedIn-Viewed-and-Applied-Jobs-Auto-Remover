@@ -1,4 +1,4 @@
-import { StorageManager } from "./storageManager";
+import { dismissedJobsManager } from "../storage/DismissedJobManager";
 
 interface JobListManagerCallbacks {
   onDismiss: (jobId: string, jobItem: HTMLLIElement) => void;
@@ -14,24 +14,31 @@ interface JobListManagerSelectors {
 export class JobListManager {
   private domObserver: MutationObserver | null = null;
   private clickListenerController: AbortController | null = null;
-  private readonly container: HTMLElement;
-  private readonly callbacks: JobListManagerCallbacks;
-  private readonly SELECTORS: JobListManagerSelectors;
+  private dismissedJobIds = new Set<string>();
+  private container: HTMLElement;
+  private callbacks: JobListManagerCallbacks;
+  private SELECTORS: JobListManagerSelectors;
 
   constructor(
     container: HTMLElement,
     callbacks: JobListManagerCallbacks,
-    SELECTORS: JobListManagerSelectors
+    selectors: JobListManagerSelectors
   ) {
     this.container = container;
     this.callbacks = callbacks;
-    this.SELECTORS = SELECTORS;
+    this.SELECTORS = selectors;
   }
 
-  public start(): void {
+  public async start(): Promise<void> {
+    try {
+      this.dismissedJobIds = await dismissedJobsManager.getSet();
+    } catch (error) {
+      console.error("Failed to load dismissed job IDs:", error);
+      this.dismissedJobIds = new Set<string>();
+    }
     this.container
       .querySelectorAll<HTMLLIElement>(this.SELECTORS.jobListItem)
-      .forEach((job) => this.scanAndStyleJob(job));
+      .forEach((job) => this.styleJobItem(job));
 
     this.domObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -40,7 +47,7 @@ export class JobListManager {
             node instanceof HTMLLIElement &&
             node.matches(this.SELECTORS.jobListItem)
           ) {
-            this.scanAndStyleJob(node);
+            this.styleJobItem(node);
           }
         });
       }
@@ -59,6 +66,14 @@ export class JobListManager {
     this.clickListenerController?.abort();
   }
 
+  public addDismissedId(jobId: string): void {
+    this.dismissedJobIds.add(jobId);
+  }
+
+  public removeDismissedId(jobId: string): void {
+    this.dismissedJobIds.delete(jobId);
+  }
+
   private applyAppliedStyle = (jobItem: HTMLLIElement): void => {
     jobItem.style.backgroundColor = "rgba(0, 120, 0, 0.2)";
     jobItem.style.border = "1px solid rgba(0, 255, 0, 0.3)";
@@ -74,23 +89,19 @@ export class JobListManager {
     jobItem.style.border = "";
   };
 
-  private scanAndStyleJob = async (jobItem: HTMLLIElement): Promise<void> => {
+  private styleJobItem = (jobItem: HTMLLIElement): void => {
     const jobId = jobItem.dataset.occludableJobId;
-    if (!jobId) {
-      console.warn("Job item missing occludableJobId:", jobItem);
-      return;
-    }
+    if (!jobId) return;
 
-    const dismissedJobs = await StorageManager.getDismissedJobs();
-
-    if (jobItem.innerHTML.toLowerCase().includes("applied")) {
-      this.applyAppliedStyle(jobItem);
-    }
-    console.log("Before check dismissed jobs");
-    if (dismissedJobs.has(jobId)) {
+    if (this.dismissedJobIds.has(jobId)) {
       this.applyDismissedStyle(jobItem);
+    } else {
+      if (jobItem.innerText.toLowerCase().includes("applied")) {
+        this.applyAppliedStyle(jobItem);
+      } else {
+        this.removeDismissedStyle(jobItem);
+      }
     }
-    console.log("After check dismissed jobs");
   };
 
   private handleClick = (event: MouseEvent): void => {
@@ -102,15 +113,16 @@ export class JobListManager {
       this.SELECTORS.undoButton
     );
 
-    if (!dismissButton && !undoButton) return;
-
     const jobItem = target.closest<HTMLLIElement>(this.SELECTORS.jobListItem);
     if (!jobItem) return;
 
     const jobId = jobItem.dataset.occludableJobId;
     if (!jobId) return;
 
-    if (dismissButton) this.callbacks.onDismiss(jobId, jobItem);
-    else if (undoButton) this.callbacks.onUndo(jobId, jobItem);
+    if (dismissButton) {
+      this.callbacks.onDismiss(jobId, jobItem);
+    } else if (undoButton) {
+      this.callbacks.onUndo(jobId, jobItem);
+    }
   };
 }

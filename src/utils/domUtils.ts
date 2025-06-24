@@ -15,11 +15,11 @@ export function waitForElement(
     }
 
     let observer: MutationObserver | null = null;
-    let timer: number | null = null;
+    let timerId: number | null = null;
 
     const cleanup = () => {
       observer?.disconnect();
-      if (timer) clearTimeout(timer);
+      if (timerId) clearTimeout(timerId);
       signal?.removeEventListener("abort", handleAbort);
     };
 
@@ -36,7 +36,7 @@ export function waitForElement(
       }
     });
 
-    timer = setTimeout(() => {
+    timerId = window.setTimeout(() => {
       cleanup();
       reject(new Error(`Element "${selector}" not found within ${timeout}ms.`));
     }, timeout);

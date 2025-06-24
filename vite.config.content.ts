@@ -10,7 +10,7 @@ export default defineConfig({
     outDir: resolve(__dirname, "dist"),
     rollupOptions: {
       input: {
-        content: resolve(__dirname, "src/content.ts"),
+        content: resolve(__dirname, "src/content/controller.ts"),
       },
       output: {
         entryFileNames: "[name].js",
