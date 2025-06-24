@@ -64,6 +64,11 @@ export class JobListManager {
     this.clickListenerController?.abort();
   }
 
+  private applyAppliedStyle = (jobItem: HTMLLIElement): void => {
+    jobItem.style.backgroundColor = "rgba(0, 120, 0, 0.2)";
+    jobItem.style.border = "1px solid rgba(0, 255, 0, 0.3)";
+  };
+
   public applyDismissedStyle = (jobItem: HTMLLIElement): void => {
     jobItem.style.backgroundColor = "rgba(120, 0, 0, 0.2)";
     jobItem.style.border = "1px solid rgba(255, 0, 0, 0.3)";
@@ -79,6 +84,9 @@ export class JobListManager {
     if (!jobId) {
       console.warn("Job item missing occludableJobId:", jobItem);
       return;
+    }
+    if (jobItem.innerHTML.toLowerCase().includes("applied")) {
+      this.applyAppliedStyle(jobItem);
     }
     if (this.dismissedJobIds.has(jobId)) {
       this.applyDismissedStyle(jobItem);
