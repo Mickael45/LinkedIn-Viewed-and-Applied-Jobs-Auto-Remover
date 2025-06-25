@@ -50,6 +50,7 @@ To further enhance the extension, the following improvements are planned:
 
 - [x] Retry on LLM structure fail (or find a better model that is at least as fast)
 - [x] LLM response caching
+- [ ] Create a styled for non-ghost viewed jobs
 - [ ] Add an option to select LLM version
 - [ ] Add profile matching meter derived from user's resume
 - [ ] Add refecth button for AI generated content
@@ -60,8 +61,8 @@ To further enhance the extension, the following improvements are planned:
 
 List of known bugs to bust before release:
 
-- [ ] (P0) Cache busting that goes off way too early
+- [X] (P0) Cache busting that goes off way too early
 - [ ] (P1) "UIManager: Could not find an anchor to inject the UI." Keeps happening
 - [ ] (P1) AI search doesn't always trigger on first load
-- [ ] (P2) Applies jobs style change doesn't work
+- [X] (P2) Applied jobs style change doesn't work
 
