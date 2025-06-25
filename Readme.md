@@ -52,3 +52,15 @@ To further enhance the extension, the following improvements are planned:
 - [x] LLM response caching
 - [ ] Add an option to select LLM version
 - [ ] Add profile matching meter derived from user's resume
+- [ ] Add refecth button for AI generated content
+
+
+## Known bugs
+
+List of known bugs to bust before release:
+
+- [] (P0) Cache busting that goes off way too early
+- [] (P1) "UIManager: Could not find an anchor to inject the UI." Keeps happening
+- [] (P1) AI search doesn't always trigger on first load
+- [] (P2) Applies jobs style change doesn't work
+
