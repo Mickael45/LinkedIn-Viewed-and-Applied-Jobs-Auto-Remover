@@ -53,6 +53,7 @@ To further enhance the extension, the following improvements are planned:
 - [ ] Add an option to select LLM version
 - [ ] Add profile matching meter derived from user's resume
 - [ ] Add refecth button for AI generated content
+- [ ] Find sexier theme when it comes to styling ghost / applied jobs
 
 
 ## Known bugs
