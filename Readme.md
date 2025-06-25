@@ -48,6 +48,7 @@ Making an LLM API call for every single job description would be slow and costly
 
 To further enhance the extension, the following improvements are planned:
 
-- [ ] Retry on LLM structure fail (or find a better model that is at least as fast)
+- [x] Retry on LLM structure fail (or find a better model that is at least as fast)
 - [x] LLM response caching
+- [ ] Add an option to select LLM version
 - [ ] Add profile matching meter derived from user's resume
