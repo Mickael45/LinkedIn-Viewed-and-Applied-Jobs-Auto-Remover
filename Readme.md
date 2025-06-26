@@ -48,19 +48,19 @@ Making an LLM API call for every single job description would be slow and costly
 
 To further enhance the extension, the following improvements are planned:
 
-- [x] Retry on LLM structure fail (or find a better model that is at least as fast)
-- [x] LLM response caching
-- [x] Create a styled for non-ghost viewed jobs
-- [x] Add refecth button for AI generated content
-- [x] Find sexier theme when it comes to styling ghost / applied jobs
+- [x] ~~Retry on LLM structure fail (or find a better model that is at least as fast)~~
+- [x] ~~LLM response caching~~
+- [x] ~~Create a styled for non-ghost viewed jobs~~
+- [x] ~~Add refecth button for AI generated content~~
+- [x] ~~Find sexier theme when it comes to styling ghost / applied jobs~~
 
 
 ## Known bugs
 
 List of known bugs to bust before release:
 
-- [X] (P0) Cache busting that goes off way too early
-- [ ] (P1) "UIManager: Could not find an anchor to inject the UI." Keeps happening
-- [ ] (P1) AI search doesn't always trigger on first load
-- [X] (P2) Applied jobs style change doesn't work
+- [x] ~~(P0) Cache busting that goes off way too early~~
+- [x] ~~(P1) "UIManager: Could not find an anchor to inject the UI." Keeps happening~~
+- [x] ~~(P1) AI search doesn't always trigger on first load~~
+- [x] ~~(P2) Applied jobs style change doesn't work~~
 
