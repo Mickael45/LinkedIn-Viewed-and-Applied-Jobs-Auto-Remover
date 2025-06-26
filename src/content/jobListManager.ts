@@ -1,14 +1,9 @@
+import { DOM_SELECTORS } from "../shared/domSelectors";
 import { dismissedJobsManager } from "../storage/DismissedJobManager";
 
 interface JobListManagerCallbacks {
   onDismiss: (jobId: string, jobItem: HTMLLIElement) => void;
   onUndo: (jobId: string, jobItem: HTMLLIElement) => void;
-}
-
-interface JobListManagerSelectors {
-  jobListItem: string;
-  dismissButton: string;
-  undoButton: string;
 }
 
 export class JobListManager {
@@ -17,16 +12,10 @@ export class JobListManager {
   private dismissedJobIds = new Set<string>();
   private container: HTMLElement;
   private callbacks: JobListManagerCallbacks;
-  private SELECTORS: JobListManagerSelectors;
 
-  constructor(
-    container: HTMLElement,
-    callbacks: JobListManagerCallbacks,
-    selectors: JobListManagerSelectors
-  ) {
+  constructor(container: HTMLElement, callbacks: JobListManagerCallbacks) {
     this.container = container;
     this.callbacks = callbacks;
-    this.SELECTORS = selectors;
   }
 
   public async start(): Promise<void> {
@@ -37,22 +26,28 @@ export class JobListManager {
       this.dismissedJobIds = new Set<string>();
     }
     this.container
-      .querySelectorAll<HTMLLIElement>(this.SELECTORS.jobListItem)
+      .querySelectorAll<HTMLLIElement>(DOM_SELECTORS.JOB_LIST_ITEM)
       .forEach((job) => this.styleJobItem(job));
 
     this.domObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         mutation.addedNodes.forEach((node) => {
-          if (
-            node instanceof HTMLLIElement &&
-            node.matches(this.SELECTORS.jobListItem)
-          ) {
-            this.styleJobItem(node);
+          if (!(node instanceof HTMLElement)) return;
+
+          const jobItem = node.matches(DOM_SELECTORS.JOB_LIST_ITEM)
+            ? (node as HTMLLIElement)
+            : node.closest<HTMLLIElement>(DOM_SELECTORS.JOB_LIST_ITEM);
+
+          if (jobItem) {
+            this.styleJobItem(jobItem);
           }
         });
       }
     });
-    this.domObserver.observe(this.container, { childList: true });
+    this.domObserver.observe(this.container, {
+      childList: true,
+      subtree: true,
+    });
 
     this.clickListenerController = new AbortController();
     this.container.addEventListener("click", this.handleClick, {
@@ -75,45 +70,60 @@ export class JobListManager {
   }
 
   private applyAppliedStyle = (jobItem: HTMLLIElement): void => {
-    jobItem.style.backgroundColor = "rgba(0, 120, 0, 0.2)";
-    jobItem.style.border = "1px solid rgba(0, 255, 0, 0.3)";
+    this.removeStyles(jobItem);
+    jobItem.style.backgroundColor = "rgba(40, 167, 69, 0.12)";
   };
 
   public applyDismissedStyle = (jobItem: HTMLLIElement): void => {
-    jobItem.style.backgroundColor = "rgba(120, 0, 0, 0.2)";
-    jobItem.style.border = "1px solid rgba(255, 0, 0, 0.3)";
+    this.removeStyles(jobItem);
+    jobItem.style.filter = "blur(1px) grayscale(60%)";
+    jobItem.style.opacity = "0.5";
+    jobItem.style.transform = "scale(0.98)";
   };
 
-  public removeDismissedStyle = (jobItem: HTMLLIElement): void => {
+  public applyViewedStyle = (jobItem: HTMLLIElement): void => {
+    if (!jobItem.style.filter && jobItem.style.backgroundColor === "") {
+      jobItem.style.backgroundColor = "rgba(243, 238, 230, 1)";
+    }
+  };
+
+  public removeStyles = (jobItem: HTMLLIElement): void => {
     jobItem.style.backgroundColor = "";
-    jobItem.style.border = "";
+    jobItem.style.filter = "";
+    jobItem.style.opacity = "1";
+    jobItem.style.transform = "";
   };
-
   private styleJobItem = (jobItem: HTMLLIElement): void => {
     const jobId = jobItem.dataset.occludableJobId;
     if (!jobId) return;
 
     if (this.dismissedJobIds.has(jobId)) {
       this.applyDismissedStyle(jobItem);
+      return;
+    }
+
+    const isApplied = jobItem.innerText.toLowerCase().includes("applied");
+    const isViewed = jobItem.innerText.toLowerCase().includes("viewed");
+
+    if (isApplied) {
+      this.applyAppliedStyle(jobItem);
+    } else if (isViewed) {
+      this.applyViewedStyle(jobItem);
     } else {
-      if (jobItem.innerText.toLowerCase().includes("applied")) {
-        this.applyAppliedStyle(jobItem);
-      } else {
-        this.removeDismissedStyle(jobItem);
-      }
+      this.removeStyles(jobItem);
     }
   };
 
   private handleClick = (event: MouseEvent): void => {
     const target = event.target as HTMLElement;
     const dismissButton = target.closest<HTMLButtonElement>(
-      this.SELECTORS.dismissButton
+      DOM_SELECTORS.DISMISS_BUTTON
     );
     const undoButton = target.closest<HTMLButtonElement>(
-      this.SELECTORS.undoButton
+      DOM_SELECTORS.UNDO_BUTTON
     );
 
-    const jobItem = target.closest<HTMLLIElement>(this.SELECTORS.jobListItem);
+    const jobItem = target.closest<HTMLLIElement>(DOM_SELECTORS.JOB_LIST_ITEM);
     if (!jobItem) return;
 
     const jobId = jobItem.dataset.occludableJobId;

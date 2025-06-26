@@ -84,8 +84,13 @@
     transition: background-color 0.3s, color 0.3s;
 }
 
-.error-content {
+.error-content, .empty-content {
     padding: 10px;
+}
+
+.error-content p, .empty-content p  {
+    font-size: 1.4rem;
+    color: var(--text-secondary);
 }
 
 .error-content h4 {
@@ -94,10 +99,12 @@
     margin-bottom: 8px;
 }
 
-.error-content p {
-    font-size: 1.4rem;
-    color: var(--text-secondary);
+
+.empty-content h4 {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
 }
+
 
 .loading-skeleton {
     position: relative;

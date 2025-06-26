@@ -29,26 +29,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const tabId = sender.tab?.id;
-
   if (request.type === LlmTaskType.EXTRACT_JOB_SUMMARY) {
     const jobId = tabId ? tabState.get(tabId)?.currentJobId : null;
-    if (!jobId) {
+
+    if (!jobId && !request.jobId) {
       sendResponse({
         success: false,
         error: "No active Job ID found for this tab.",
       });
       return true;
     }
-    extractJobSummary(request.text, jobId).then(sendResponse);
+    extractJobSummary(request.text, jobId || request.jobId).then(sendResponse);
     return true;
-  }
-
-  if (request.type === CommandType.GET_CURRENT_JOB_ID) {
-    const jobId = (tabId && tabState.get(tabId)?.currentJobId) || null;
-
-    sendResponse({ jobId });
-
-    return;
   }
 });
 
@@ -78,17 +70,5 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (tabState.has(tabId)) {
     tabState.delete(tabId);
-  }
-});
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (
-    changeInfo.status === "complete" &&
-    tab.url?.startsWith(LINKEDIN_JOBS_URL_PREFIX)
-  ) {
-    const currentUrl = new URL(tab.url);
-    const newJobId = currentUrl.searchParams.get("currentJobId");
-
-    tabState.set(tabId, { currentJobId: newJobId });
   }
 });

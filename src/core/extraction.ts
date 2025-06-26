@@ -1,5 +1,5 @@
 import type { BackgroundResponse } from "../shared/comms";
-import { type JobSummaryData, JobSummarySchema } from "../shared/schemas";
+import { type JobSummaryData } from "../shared/schemas";
 import { retry } from "../utils/retry";
 import { callLlm } from "./llm-api";
 import { jobSummaryExtractionPrompt } from "./prompts";
@@ -29,27 +29,7 @@ export async function extractJobSummary(
       "{{JOB_DESCRIPTION_TEXT}}",
       text
     );
-    const llmResponse = await callLlm(prompt, jobId, "json", signal);
-    if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-
-    let jsonText = llmResponse.trim();
-    const markdownMatch = jsonText.match(/```(?:json)?\n([\s\S]*?)\n```/);
-    if (markdownMatch) {
-      jsonText = markdownMatch[1];
-    }
-
-    const parsedJson = JSON.parse(jsonText);
-    const validation = JobSummarySchema.safeParse(parsedJson);
-
-    if (!validation.success) {
-      console.error("LLM Schema Validation Error:", validation.error);
-      throw new Error(
-        `LLM response failed schema validation: ${
-          validation.error.flatten().fieldErrors
-        }`
-      );
-    }
-    return validation.data;
+    return callLlm(prompt, jobId, "json", signal);
   };
 
   try {

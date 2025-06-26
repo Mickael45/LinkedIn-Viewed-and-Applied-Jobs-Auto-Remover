@@ -1,89 +1,64 @@
+import { DOM_SELECTORS } from "../shared/domSelectors";
 import type { JobSummaryData, SalaryData } from "../shared/schemas";
 import styles from "./uiManager.css?raw";
 
-interface UIManagerSelectors {
-  jobDetailPanel: string;
-  panelContainerAnchor: string;
-  summaryContainerId: string;
-}
+type OnRefreshCallback = () => void;
 
 export class UIManager {
-  private readonly SELECTORS: UIManagerSelectors;
+  private readonly onRefresh: OnRefreshCallback;
   private stylesInjected: boolean = false;
+  private refreshButton: HTMLButtonElement | null = null;
 
-  constructor(selectors: UIManagerSelectors) {
-    this.SELECTORS = selectors;
-    this.injectStyles();
+  constructor(onRefresh: OnRefreshCallback) {
+    this.onRefresh = onRefresh;
   }
 
-  public displaySummary(summaryData: JobSummaryData): void {
-    const mainContainer = this.getOrCreateMainContainer();
-    if (!mainContainer) return;
-    this.renderContent(mainContainer, summaryData);
+  public async renderSummary(summaryData: JobSummaryData): Promise<void> {
+    const contentArea = await this.getOrCreateContentArea();
+    if (!contentArea) return;
+
+    this.renderContent(contentArea, summaryData);
+    this.setRefreshButtonState(false);
   }
 
-  public displayError(message: string): void {
-    const mainContainer = this.getOrCreateMainContainer();
-    if (!mainContainer) return;
+  public async renderError(message: string): Promise<void> {
+    const contentArea = await this.getOrCreateContentArea();
+    if (!contentArea) return;
 
-    mainContainer.innerHTML = `
-      <div class="content">
-        <div class="header">
-            <span class="title">Analyser</span>
-        </div>
+    contentArea.innerHTML = `
         <div class="error-content">
             <h4>Analysis Failed</h4>
-            <p title="${message}">The AI core could not process the job description. This can happen with unusual formatting or network errors. Please try another listing.</p>
+            <p></p>
         </div>
-      </div>
     `;
+    const errorParagraph = contentArea.querySelector(".error-content p");
+    if (errorParagraph) errorParagraph.textContent = message;
+
+    this.setRefreshButtonState(true);
   }
 
-  public clearAll(): void {
-    document.getElementById(this.SELECTORS.summaryContainerId)?.remove();
+  public renderEmpty(message: string): void {
+    const contentArea = document.querySelector<HTMLElement>(
+      `#${DOM_SELECTORS.SUMMARY_CONTAINER_ID} .content-area`
+    );
+    if (!contentArea) return;
+
+    contentArea.innerHTML = `
+        <div class="empty-content">
+            <h4>No Data Available</h4>
+            <p>${message}</p>
+        </div>
+    `;
+    this.setRefreshButtonState(true);
   }
 
-  private injectStyles(): void {
-    if (this.stylesInjected || document.getElementById("styles")) return;
-    try {
-      const styleElement = document.createElement("style");
-      styleElement.id = "styles";
-      styleElement.textContent = styles;
-      document.head.appendChild(styleElement);
-      this.stylesInjected = true;
-    } catch (error) {
-      console.error("UIManager: Failed to inject styles.", error);
-    }
-  }
+  public async renderLoadingState(): Promise<void> {
+    const contentArea = await this.getOrCreateContentArea();
+    if (!contentArea) return;
 
-  private getOrCreateMainContainer(): HTMLElement | null {
-    let container = document.getElementById(this.SELECTORS.summaryContainerId);
-    if (container) {
-      container.innerHTML = "";
-      return container;
-    }
+    this.setRefreshButtonState(false);
 
-    const detailPanel = document.querySelector(this.SELECTORS.jobDetailPanel);
-    const parentElement = detailPanel?.querySelector(
-      this.SELECTORS.panelContainerAnchor
-    )?.parentElement;
-    if (!parentElement) {
-      console.error("UIManager: Could not find an anchor to inject the UI.");
-      return null;
-    }
-
-    container = document.createElement("div");
-    container.id = this.SELECTORS.summaryContainerId;
-    container.className = "summary-container";
-    parentElement.prepend(container);
-    return container;
-  }
-
-  public renderLoadingState(): void {
-    const mainContainer = this.getOrCreateMainContainer();
-    if (!mainContainer) return;
-
-    mainContainer.innerHTML = `
+    contentArea.innerHTML = `
         <div class="loading-bar">
             <div class="gemini-loader"></div>
         </div>
@@ -103,20 +78,134 @@ export class UIManager {
       `;
   }
 
-  private renderContent(
-    mainContainer: HTMLElement,
-    summaryData: JobSummaryData
-  ): void {
-    mainContainer.innerHTML = "";
+  public clearAll(): void {
+    const mainContainer = document.getElementById(
+      DOM_SELECTORS.SUMMARY_CONTAINER_ID
+    );
+    mainContainer?.remove();
+    this.refreshButton = null;
+  }
 
-    const contentWrapper = document.createElement("div");
-    contentWrapper.className = "content";
+  private injectStyles(): void {
+    if (this.stylesInjected) return;
+    try {
+      const styleElement = document.createElement("style");
+      styleElement.textContent = `
+        ${styles}
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .refresh-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1.8rem;
+            line-height: 1;
+            padding: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .refresh-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+        `;
+      document.head.appendChild(styleElement);
+      this.stylesInjected = true;
+    } catch (error) {
+      console.error("UIManager: Failed to inject styles.", error);
+    }
+  }
 
+  private async getOrCreateContentArea(): Promise<HTMLElement | null> {
+    this.injectStyles();
+
+    const mainContainerId = DOM_SELECTORS.SUMMARY_CONTAINER_ID;
+    let mainContainer = document.getElementById(mainContainerId);
+
+    if (mainContainer) {
+      const contentArea =
+        mainContainer.querySelector<HTMLElement>(".content-area");
+      contentArea!.innerHTML = "";
+      return contentArea;
+    }
+
+    const jobDetailsPanel = document.querySelector(
+      DOM_SELECTORS.JOB_DETAIL_PANEL
+    );
+
+    if (!jobDetailsPanel) {
+      console.error(
+        "UIManager: Could not find a suitable anchor to inject the UI."
+      );
+      return null;
+    }
+
+    mainContainer = document.createElement("div");
+    mainContainer.id = mainContainerId;
+    mainContainer.className = "summary-container";
+
+    const header = this.createHeader();
+    const contentArea = document.createElement("div");
+
+    contentArea.className = "content-area";
+    mainContainer.appendChild(header);
+    mainContainer.appendChild(contentArea);
+    jobDetailsPanel.prepend(mainContainer);
+
+    return contentArea;
+  }
+
+  private createHeader(): HTMLElement {
     const header = document.createElement("div");
     header.className = "header";
-    header.innerHTML = `<span class="title">Analysis</span>`;
-    contentWrapper.appendChild(header);
 
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = "Analysis";
+
+    this.refreshButton = document.createElement("button");
+    this.refreshButton.className = "refresh-button";
+    this.refreshButton.innerHTML = "&#x21bb;";
+    this.refreshButton.title = "Rerun Analysis";
+    this.refreshButton.style.display = "none";
+    this.refreshButton.addEventListener("click", this.onRefresh);
+
+    header.appendChild(title);
+    header.appendChild(this.refreshButton);
+
+    return header;
+  }
+
+  private setRefreshButtonState(enabled: boolean): void {
+    if (!this.refreshButton) return;
+    this.refreshButton.style.display = enabled ? "inline-flex" : "none";
+  }
+
+  private renderContent(
+    container: HTMLElement,
+    summaryData: JobSummaryData
+  ): void {
+    container.innerHTML = "";
+
+    const contentWrapper = document.createElement("div");
+    const { salary, mustHaves, preferred, requirements } = summaryData;
+
+    const hasData =
+      salary || mustHaves?.length || preferred?.length || requirements?.length;
+
+    if (!hasData) {
+      this.renderEmpty("No job requirements data available.");
+      return;
+    }
+
+    contentWrapper.className = "content";
     this.renderSection(contentWrapper, "Must-Haves", summaryData.mustHaves);
     this.renderSection(contentWrapper, "Preferred", summaryData.preferred);
     this.renderSection(
@@ -125,8 +214,7 @@ export class UIManager {
       summaryData.requirements
     );
     this.renderSalary(contentWrapper, summaryData.salary);
-
-    mainContainer.appendChild(contentWrapper);
+    container.appendChild(contentWrapper);
   }
 
   private renderSection(
@@ -134,7 +222,9 @@ export class UIManager {
     title: string,
     items: string[]
   ): void {
-    if (!items || items.length === 0) return;
+    if (!items || items.length === 0) {
+      return;
+    }
 
     const sectionEl = document.createElement("div");
     sectionEl.className = "section";
