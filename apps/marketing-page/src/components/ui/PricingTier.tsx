@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Icon } from "./Icon";
+import { useUser, useAuth } from "@clerk/clerk-react";
 
 type PricingTierProps = {
   name: string;
@@ -24,6 +25,10 @@ const PricingTierComponent = ({
   isRecommended,
   animationDelay,
 }: PricingTierProps) => {
+  const { isSignedIn, isLoaded } = useUser();
+  const { getToken } = useAuth();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<null | string>(null);
   const tierClasses = isRecommended
     ? "bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500 relative transform md:scale-105 hover:scale-110"
     : "bg-gray-800 border border-gray-700 hover:border-gray-600";
@@ -31,6 +36,49 @@ const PricingTierComponent = ({
   const buttonClasses = isRecommended
     ? "bg-blue-600 hover:bg-blue-700 group-hover:shadow-xl group-hover:shadow-blue-500/50"
     : "bg-gray-700 hover:bg-gray-600 group-hover:shadow-lg";
+
+  const handleClick = async () => {
+    setIsProcessing(true);
+    setPaymentError(null);
+
+    if (!isSignedIn) {
+      setPaymentError("You must be signed in to subscribe.");
+      setIsProcessing(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "https://linkedin-joblens-iy2gj7zyf-mickael45s-projects.vercel.app/api/health"
+      );
+      // const token = await getToken();
+      // console.log("Clerk token:", token);
+      // const response = await fetch(
+      //   "https://linkedin-joblens-mg4o9e5fo-mickael45s-projects.vercel.app/api/stripe/create-checkout-session",
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //     body: JSON.stringify({ priceId: "prod_Sas8V0tLztj6xh" }),
+      //   }
+      // );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Something went wrong");
+      }
+
+      // const session = await response.json();
+
+      // window.location.href = session.url;
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setPaymentError(err.message);
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div
@@ -68,12 +116,22 @@ const PricingTierComponent = ({
           </li>
         ))}
       </ul>
-      <a
-        href={buttonLink}
-        className={`block w-full text-center py-3 px-6 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 ${buttonClasses}`}
-      >
-        {buttonText}
-      </a>
+      {isRecommended ? (
+        <a
+          onClick={handleClick}
+          className={`block flex items-center justify-center w-full text-center py-3 px-6 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 ${buttonClasses}`}
+        >
+          {buttonText}
+        </a>
+      ) : (
+        <a
+          href={buttonLink}
+          className={`block flex items-center justify-center w-full text-center py-3 px-6 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 ${buttonClasses}`}
+        >
+          {buttonText}
+        </a>
+      )}
+      {paymentError && <p className="text-red-500 mt-2">{paymentError}</p>}
     </div>
   );
 };

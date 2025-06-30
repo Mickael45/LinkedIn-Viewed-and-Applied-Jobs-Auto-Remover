@@ -54,7 +54,6 @@ To further enhance the extension, the following improvements are planned:
 - [x] ~~Add refecth button for AI generated content~~
 - [x] ~~Find sexier theme when it comes to styling ghost / applied jobs~~
 
-
 ## Known bugs
 
 List of known bugs to bust before release:
@@ -63,4 +62,3 @@ List of known bugs to bust before release:
 - [x] ~~(P1) "UIManager: Could not find an anchor to inject the UI." Keeps happening~~
 - [x] ~~(P1) AI search doesn't always trigger on first load~~
 - [x] ~~(P2) Applied jobs style change doesn't work~~
-

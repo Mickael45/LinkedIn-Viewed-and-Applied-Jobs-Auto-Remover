@@ -88,7 +88,7 @@ export const PRICING_TIERS = [
     features: ["Unlimited Job Filtering", "Works locally in browser"],
     buttonText: "Get Started Free",
     buttonLink:
-      "https://chrome.google.com/webstore/detail/your-app-name/your-app-id", // <-- REPLACE WITH YOUR REAL CHROME STORE LINK
+      "https://chrome.google.com/webstore/detail/your-app-name/your-app-id",
     isRecommended: false,
   },
   {
@@ -102,7 +102,6 @@ export const PRICING_TIERS = [
       "Priority Support",
     ],
     buttonText: "Go AI Pro",
-    buttonLink: "https://buy.stripe.com/your_unique_payment_link_id", // <-- REPLACE WITH YOUR REAL STRIPE PAYMENT LINK
     isRecommended: true,
   },
 ];
