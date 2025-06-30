@@ -1,10 +1,16 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { clerkMiddleware } from "@clerk/express";
+import {
+  clerkClient,
+  clerkMiddleware,
+  getAuth,
+  requireAuth,
+} from "@clerk/express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { kv } from "@vercel/kv";
 import Stripe from "stripe";
+import { Webhook } from "svix";
 
 console.log("Initializing backend API...");
 
@@ -15,9 +21,14 @@ const requiredEnvVars = [
   "STRIPE_WEBHOOK_SECRET",
   "CLERK_WEBHOOK_SECRET",
   "GEMINI_API_KEY",
+  "KV_URL",
   "KV_REST_API_URL",
+  "KV_REST_API_TOKEN",
+  "KV_REST_API_READ_ONLY_TOKEN",
+  "REDIS_URL",
 ] as const;
 
+console.log(process.env);
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);
@@ -144,293 +155,293 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "operational", timestamp: new Date().toISOString() });
 });
 
-// app.post("/api/webhooks/clerk", async (req, res) => {
-//   try {
-//     const webhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+app.post("/api/webhooks/clerk", async (req, res) => {
+  try {
+    const webhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
-//     const payload = webhook.verify(req.body, {
-//       "svix-id": req.headers["svix-id"] as string,
-//       "svix-timestamp": req.headers["svix-timestamp"] as string,
-//       "svix-signature": req.headers["svix-signature"] as string,
-//     });
+    const payload = webhook.verify(req.body, {
+      "svix-id": req.headers["svix-id"] as string,
+      "svix-timestamp": req.headers["svix-timestamp"] as string,
+      "svix-signature": req.headers["svix-signature"] as string,
+    });
 
-//     const { type, data } = payload as any;
+    const { type, data } = payload as any;
 
-//     if (type === "user.created") {
-//       const { id: userId, primary_email_address } = data;
+    if (type === "user.created") {
+      const { id: userId, primary_email_address } = data;
 
-//       if (!primary_email_address?.email_address) {
-//         console.error(
-//           "[CLERK WEBHOOK] No email address found for user:",
-//           userId
-//         );
-//         res.status(400).json({ error: "Email address required" });
-//         return;
-//       }
+      if (!primary_email_address?.email_address) {
+        console.error(
+          "[CLERK WEBHOOK] No email address found for user:",
+          userId
+        );
+        res.status(400).json({ error: "Email address required" });
+        return;
+      }
 
-//       const stripeCustomer = await stripe.customers.create({
-//         email: primary_email_address.email_address,
-//         metadata: {
-//           clerkUserId: userId,
-//         },
-//       });
+      const stripeCustomer = await stripe.customers.create({
+        email: primary_email_address.email_address,
+        metadata: {
+          clerkUserId: userId,
+        },
+      });
 
-//       await kv.set(`stripe:user:${userId}`, stripeCustomer.id);
+      await kv.set(`stripe:user:${userId}`, stripeCustomer.id);
 
-//       console.log(
-//         `[CLERK WEBHOOK] Created Stripe customer ${stripeCustomer.id} for user ${userId}`
-//       );
-//     }
+      console.log(
+        `[CLERK WEBHOOK] Created Stripe customer ${stripeCustomer.id} for user ${userId}`
+      );
+    }
 
-//     res.json({ received: true });
-//   } catch (error) {
-//     console.error("[CLERK WEBHOOK] Error processing webhook:", error);
-//     res.status(400).json({ error: "Webhook signature verification failed" });
-//   }
-// });
+    res.json({ received: true });
+  } catch (error) {
+    console.error("[CLERK WEBHOOK] Error processing webhook:", error);
+    res.status(400).json({ error: "Webhook signature verification failed" });
+  }
+});
 
-// app.post(
-//   "/api/stripe/create-checkout-session",
-//   requireAuth(),
-//   async (req, res) => {
-//     try {
-//       const { priceId } = req.body;
-//       const { userId } = getAuth(req);
-//       console.log("[STRIPE CHECKOUT] Creating session for user:", userId);
-//       console.log("[STRIPE CHECKOUT] Price ID:", priceId);
-//       if (!userId) {
-//         res.status(401).json({ error: "Unauthorized" });
-//         return;
-//       }
+app.post(
+  "/api/stripe/create-checkout-session",
+  requireAuth(),
+  async (req, res) => {
+    try {
+      const { priceId } = req.body;
+      const { userId } = getAuth(req);
+      console.log("[STRIPE CHECKOUT] Creating session for user:", userId);
+      console.log("[STRIPE CHECKOUT] Price ID:", priceId);
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
 
-//       if (!priceId) {
-//         res.status(400).json({ error: "Price ID is required" });
-//         return;
-//       }
+      if (!priceId) {
+        res.status(400).json({ error: "Price ID is required" });
+        return;
+      }
 
-//       let stripeCustomerId = await kv.get(`stripe:user:${userId}`);
+      let stripeCustomerId = await kv.get(`stripe:user:${userId}`);
 
-//       if (!stripeCustomerId) {
-//         const user = await clerkClient.users.getUser(userId);
-//         const email = user.primaryEmailAddress?.emailAddress;
+      if (!stripeCustomerId) {
+        const user = await clerkClient.users.getUser(userId);
+        const email = user.primaryEmailAddress?.emailAddress;
 
-//         if (!email) {
-//           res.status(400).json({ error: "User email not found" });
-//           return;
-//         }
+        if (!email) {
+          res.status(400).json({ error: "User email not found" });
+          return;
+        }
 
-//         const newCustomer = await stripe.customers.create({
-//           email,
-//           metadata: {
-//             clerkUserId: userId,
-//           },
-//         });
+        const newCustomer = await stripe.customers.create({
+          email,
+          metadata: {
+            clerkUserId: userId,
+          },
+        });
 
-//         await kv.set(`stripe:user:${userId}`, newCustomer.id);
-//         stripeCustomerId = newCustomer.id;
-//       }
+        await kv.set(`stripe:user:${userId}`, newCustomer.id);
+        stripeCustomerId = newCustomer.id;
+      }
 
-//       const checkout = await stripe.checkout.sessions.create({
-//         customer: stripeCustomerId as string,
-//         payment_method_types: ["card"],
-//         line_items: [
-//           {
-//             price: priceId,
-//             quantity: 1,
-//           },
-//         ],
-//         mode: "subscription",
-//         success_url: `${req.headers.origin}/success`,
-//         cancel_url: `${req.headers.origin}/pricing`,
-//       });
+      const checkout = await stripe.checkout.sessions.create({
+        customer: stripeCustomerId as string,
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: "subscription",
+        success_url: `${req.headers.origin}/success`,
+        cancel_url: `${req.headers.origin}/pricing`,
+      });
 
-//       res.json({ url: checkout.url });
-//     } catch (error) {
-//       console.error("[STRIPE CHECKOUT] Error creating session:", error);
-//       res.status(500).json({ error: "Failed to create checkout session" });
-//     }
-//   }
-// );
+      res.json({ url: checkout.url });
+    } catch (error) {
+      console.error("[STRIPE CHECKOUT] Error creating session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  }
+);
 
-// app.get("/api/success", requireAuth(), async (req, res) => {
-//   try {
-//     const { userId } = getAuth(req);
-//     const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
+app.get("/api/success", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
 
-//     if (!stripeCustomerId) {
-//       res.redirect("/");
-//       return;
-//     }
+    if (!stripeCustomerId) {
+      res.redirect("/");
+      return;
+    }
 
-//     if (!userId) {
-//       res.status(401).json({ error: "Unauthorized" });
-//       return;
-//     }
-//     await syncStripeDataToKV(stripeCustomerId as string);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    await syncStripeDataToKV(stripeCustomerId as string);
 
-//     res.redirect("/dashboard");
-//   } catch (error) {
-//     console.error("[SUCCESS] Error processing success:", error);
-//     res.redirect("/");
-//   }
-// });
+    res.redirect("/dashboard");
+  } catch (error) {
+    console.error("[SUCCESS] Error processing success:", error);
+    res.redirect("/");
+  }
+});
 
-// app.post("/api/webhooks/stripe", async (req, res) => {
-//   try {
-//     const sig = req.headers["stripe-signature"] as string;
+app.post("/api/webhooks/stripe", async (req, res) => {
+  try {
+    const sig = req.headers["stripe-signature"] as string;
 
-//     if (!sig) {
-//       res.status(400).json({ error: "Missing stripe signature" });
-//       return;
-//     }
+    if (!sig) {
+      res.status(400).json({ error: "Missing stripe signature" });
+      return;
+    }
 
-//     const event = stripe.webhooks.constructEvent(
-//       req.body,
-//       sig,
-//       process.env.STRIPE_WEBHOOK_SECRET!
-//     );
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
 
-//     console.log(`[STRIPE WEBHOOK] Processing event: ${event.type}`);
+    console.log(`[STRIPE WEBHOOK] Processing event: ${event.type}`);
 
-//     await processEvent(event);
+    await processEvent(event);
 
-//     res.json({ received: true });
-//   } catch (error) {
-//     console.error("[STRIPE WEBHOOK] Error processing webhook:", error);
-//     res.status(400).json({ error: "Webhook processing failed" });
-//   }
-// });
+    res.json({ received: true });
+  } catch (error) {
+    console.error("[STRIPE WEBHOOK] Error processing webhook:", error);
+    res.status(400).json({ error: "Webhook processing failed" });
+  }
+});
 
-// async function processEvent(event: Stripe.Event) {
-//   if (!allowedEvents.includes(event.type)) return;
+async function processEvent(event: Stripe.Event) {
+  if (!allowedEvents.includes(event.type)) return;
 
-//   const { customer: customerId } = event?.data?.object as {
-//     customer: string;
-//   };
+  const { customer: customerId } = event?.data?.object as {
+    customer: string;
+  };
 
-//   if (typeof customerId !== "string") {
-//     throw new Error(
-//       `[STRIPE HOOK] Customer ID isn't string.\nEvent type: ${event.type}`
-//     );
-//   }
+  if (typeof customerId !== "string") {
+    throw new Error(
+      `[STRIPE HOOK] Customer ID isn't string.\nEvent type: ${event.type}`
+    );
+  }
 
-//   return await syncStripeDataToKV(customerId);
-// }
+  return await syncStripeDataToKV(customerId);
+}
 
-// app.get("/api/subscription-status", requireAuth(), async (req, res) => {
-//   try {
-//     const { userId } = getAuth(req);
-//     const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
+app.get("/api/subscription-status", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
 
-//     if (!stripeCustomerId) {
-//       res.json({ status: "none" });
-//       return;
-//     }
+    if (!stripeCustomerId) {
+      res.json({ status: "none" });
+      return;
+    }
 
-//     if (!userId) {
-//       res.status(401).json({ error: "Unauthorized" });
-//       return;
-//     }
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
 
-//     const subData = await kv.get(`stripe:customer:${stripeCustomerId}`);
-//     res.json(subData || { status: "none" });
-//   } catch (error) {
-//     console.error("[SUBSCRIPTION STATUS] Error fetching status:", error);
-//     res.status(500).json({ error: "Failed to fetch subscription status" });
-//   }
-// });
+    const subData = await kv.get(`stripe:customer:${stripeCustomerId}`);
+    res.json(subData || { status: "none" });
+  } catch (error) {
+    console.error("[SUBSCRIPTION STATUS] Error fetching status:", error);
+    res.status(500).json({ error: "Failed to fetch subscription status" });
+  }
+});
 
-// app.post("/api/gemini-proxy", requireAuth(), async (req, res) => {
-//   try {
-//     const { userId } = getAuth(req);
-//     const { prompt, model = "gemini-1.5-flash" } = req.body;
+app.post("/api/gemini-proxy", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const { prompt, model = "gemini-1.5-flash" } = req.body;
 
-//     if (!userId) {
-//       res.status(401).json({ error: "Unauthorized" });
-//       return;
-//     }
-//     if (!prompt) {
-//       res.status(400).json({ error: "Prompt is required" });
-//       return;
-//     }
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
 
-//     const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
+    const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
 
-//     if (!stripeCustomerId) {
-//       res.status(403).json({ error: "Active subscription required." });
-//       return;
-//     }
+    if (!stripeCustomerId) {
+      res.status(403).json({ error: "Active subscription required." });
+      return;
+    }
 
-//     const subData = (await kv.get(
-//       `stripe:customer:${stripeCustomerId}`
-//     )) as STRIPE_SUB_CACHE | null;
+    const subData = (await kv.get(
+      `stripe:customer:${stripeCustomerId}`
+    )) as STRIPE_SUB_CACHE | null;
 
-//     const isActive =
-//       subData &&
-//       subData.status !== "none" &&
-//       (subData.status === "active" || subData.status === "trialing");
+    const isActive =
+      subData &&
+      subData.status !== "none" &&
+      (subData.status === "active" || subData.status === "trialing");
 
-//     if (!isActive) {
-//       res.status(403).json({ error: "Active subscription required." });
-//       return;
-//     }
+    if (!isActive) {
+      res.status(403).json({ error: "Active subscription required." });
+      return;
+    }
 
-//     const geminiModel = genAI.getGenerativeModel({ model });
+    const geminiModel = genAI.getGenerativeModel({ model });
 
-//     res.setHeader("Content-Type", "text/plain");
-//     res.setHeader("Transfer-Encoding", "chunked");
-//     res.setHeader("Cache-Control", "no-cache");
-//     res.setHeader("Connection", "keep-alive");
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
 
-//     try {
-//       const result = await geminiModel.generateContentStream(prompt);
+    try {
+      const result = await geminiModel.generateContentStream(prompt);
 
-//       for await (const chunk of result.stream) {
-//         const chunkText = chunk.text();
-//         if (chunkText) {
-//           res.write(chunkText);
-//         }
-//       }
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          res.write(chunkText);
+        }
+      }
 
-//       res.end();
-//     } catch (geminiError) {
-//       console.error("[GEMINI PROXY] Gemini API error:", geminiError);
+      res.end();
+    } catch (geminiError) {
+      console.error("[GEMINI PROXY] Gemini API error:", geminiError);
 
-//       if (!res.headersSent) {
-//         res.status(500).json({ error: "Failed to generate response" });
-//       } else {
-//         res.write("\n\n[Error: Failed to complete response]");
-//         res.end();
-//       }
-//     }
-//   } catch (error) {
-//     console.error("[GEMINI PROXY] Error processing request:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to generate response" });
+      } else {
+        res.write("\n\n[Error: Failed to complete response]");
+        res.end();
+      }
+    }
+  } catch (error) {
+    console.error("[GEMINI PROXY] Error processing request:", error);
 
-//     if (!res.headersSent) {
-//       res.status(500).json({ error: "Internal server error" });
-//     }
-//   }
-// });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
 
-// app.use(
-//   (
-//     error: Error,
-//     _: express.Request,
-//     res: express.Response,
-//     __: express.NextFunction
-//   ) => {
-//     console.error("[GLOBAL ERROR]", error);
+app.use(
+  (
+    error: Error,
+    _: express.Request,
+    res: express.Response,
+    __: express.NextFunction
+  ) => {
+    console.error("[GLOBAL ERROR]", error);
 
-//     if (!res.headersSent) {
-//       res.status(500).json({
-//         error: "Internal server error",
-//         ...(process.env.NODE_ENV === "development" && {
-//           details: error.message,
-//         }),
-//       });
-//     }
-//   }
-// );
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "Internal server error",
+        ...(process.env.NODE_ENV === "development" && {
+          details: error.message,
+        }),
+      });
+    }
+  }
+);
 
 app.use((req, res, next) => {
   res.status(404).json({ error: "Endpoint not found" });
@@ -447,6 +458,3 @@ if (process.env.NODE_ENV !== "production") {
     console.log(`🗄️ Using Vercel KV for subscription state`);
   });
 }
-console.log(`📡 Webhooks ready at /api/webhooks/*`);
-console.log(`🔐 Protected routes secured with Clerk`);
-console.log(`🗄️ Using Vercel KV for subscription state`);

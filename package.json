@@ -11,5 +11,8 @@
   },
   "workspaces": [
     "apps/*"
-  ]
+  ],
+  "dependencies": {
+    "vite": "^6.3.5"
+  }
 }

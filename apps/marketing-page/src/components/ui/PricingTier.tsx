@@ -48,31 +48,28 @@ const PricingTierComponent = ({
     }
 
     try {
+      const token = await getToken();
+      console.log("Clerk token:", token);
       const response = await fetch(
-        "https://linkedin-joblens-iy2gj7zyf-mickael45s-projects.vercel.app/api/health"
+        "https://linkedin-joblens-5g3fbax1c-mickael45s-projects.vercel.app/api/stripe/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ priceId: "price_1RfgOWD7sdskX7mhigNmvh3L" }),
+        }
       );
-      // const token = await getToken();
-      // console.log("Clerk token:", token);
-      // const response = await fetch(
-      //   "https://linkedin-joblens-mg4o9e5fo-mickael45s-projects.vercel.app/api/stripe/create-checkout-session",
-      //   {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //       Authorization: `Bearer ${token}`,
-      //     },
-      //     body: JSON.stringify({ priceId: "prod_Sas8V0tLztj6xh" }),
-      //   }
-      // );
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Something went wrong");
       }
 
-      // const session = await response.json();
+      const session = await response.json();
 
-      // window.location.href = session.url;
+      window.location.href = session.url;
     } catch (err) {
       console.error("Checkout error:", err);
       setPaymentError(err.message);
