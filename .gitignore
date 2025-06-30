@@ -36,3 +36,5 @@ Thumbs.db
 # Test reports
 /coverage
 .nyc_output
+
+.turbo
