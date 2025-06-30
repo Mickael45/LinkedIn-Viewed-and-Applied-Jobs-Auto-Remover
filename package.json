@@ -1,23 +1,16 @@
 {
-  "name": "linkedin-joblist-enhancer",
+  "name": "linkedin-joblens-ai",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build:content": "vite build --config vite.config.content.ts",
-    "build:background": "vite build --config vite.config.background.ts",
-    "build": "npm run build:content && npm run build:background",
-    "preview": "vite preview"
-  },
+  "scripts": {},
   "devDependencies": {
-    "@types/chrome": "^0.0.326",
-    "@types/json-schema": "^7.0.15",
-    "@types/node": "^24.0.3",
+    "@eslint/js": "^9.29.0",
+    "eslint": "^9.29.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
     "typescript": "~5.8.3",
+    "@types/node": "^24.0.7",
     "vite": "^6.3.5"
-  },
-  "dependencies": {
-    "zod": "^3.25.67"
   }
 }
