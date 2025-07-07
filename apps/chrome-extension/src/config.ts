@@ -24,7 +24,7 @@ export const OLLAMA_CONFIG = {
 };
 
 export const GEMINI_CONFIG = {
-  API_KEY: "",
+  API_KEY: import.meta.env.VITE_GEMINI_API_KEY,
   MODEL: "gemini-1.5-flash",
   get API_URL() {
     if (!this.API_KEY || this.API_KEY === "YOUR_GEMINI_API_KEY_HERE") {

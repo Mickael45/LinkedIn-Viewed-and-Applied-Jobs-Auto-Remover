@@ -5,11 +5,13 @@ import {
   Search,
   Clock,
   Check,
+  X,
   Shield,
   Zap,
   Target,
   Star,
   ChevronDown,
+  Hourglass,
 } from "lucide-react";
 import { ExoticComponent } from "react";
 
@@ -19,6 +21,8 @@ export const ICONS: { [key: string]: ExoticComponent<{ className?: string }> } =
     Brain,
     Download,
     Search,
+    Hourglass,
+    X,
     Clock,
     Check,
     Shield,
@@ -76,33 +80,6 @@ export const HOW_IT_WORKS_STEPS = [
     title: "Save Time",
     description:
       "Instantly filter jobs and use AI summaries to focus your search. Find your next opportunity faster than ever.",
-  },
-];
-
-export const PRICING_TIERS = [
-  {
-    name: "Free",
-    price: "€0",
-    period: "/month",
-    description: "Perfect for getting started",
-    features: ["Unlimited Job Filtering", "Works locally in browser"],
-    buttonText: "Get Started Free",
-    buttonLink:
-      "https://chrome.google.com/webstore/detail/your-app-name/your-app-id",
-    isRecommended: false,
-  },
-  {
-    name: "AI Pro",
-    price: "€5.99",
-    period: "/month",
-    description: "Maximum efficiency with AI power",
-    features: [
-      "Everything in Free, plus:",
-      "AI-Powered Job Summaries",
-      "Priority Support",
-    ],
-    buttonText: "Go AI Pro",
-    isRecommended: true,
   },
 ];
 

@@ -19,7 +19,6 @@ export default function AuthModal({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-900 rounded-2xl border border-gray-700 max-w-md w-full max-h-[90vh] overflow-y-auto relative">
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all duration-200"
@@ -27,7 +26,6 @@ export default function AuthModal({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Header */}
         <div className="p-6 pb-4 text-center">
           <h2 className="text-2xl font-bold text-white mb-2">
             {mode === "signin" ? "Welcome Back" : "Join LinkedIn JobLens AI"}
@@ -39,7 +37,6 @@ export default function AuthModal({
           </p>
         </div>
 
-        {/* Clerk Auth Component */}
         <div className="px-6 pb-6">
           {mode === "signin" ? (
             <SignIn
@@ -58,7 +55,6 @@ export default function AuthModal({
                   footerActionLink: "text-blue-400 hover:text-blue-300",
                 },
               }}
-              redirectUrl="/dashboard"
             />
           ) : (
             <SignUp
@@ -77,7 +73,6 @@ export default function AuthModal({
                   footerActionLink: "text-blue-400 hover:text-blue-300",
                 },
               }}
-              redirectUrl="/dashboard"
             />
           )}
         </div>

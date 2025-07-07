@@ -153,6 +153,17 @@
     border-radius: 16px;
 }
 
+.pro-badge {
+  background: linear-gradient(45deg, var(--accent-color), #f472b6);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 @keyframes shimmer {
     0% { left: -150%; }
     100% { left: 150%; }
@@ -166,4 +177,32 @@
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+.manage-subscription-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    color: #fff;
+    background: linear-gradient(to bottom, #4f46e5, #3730a3);
+    border: 1px solid #4f46e5;
+    border-bottom: 3px solid #3730a3;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.unsuscribed-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
 }

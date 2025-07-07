@@ -1,4 +1,3 @@
-import { CommandType, type CommandMessage } from "../shared/comms";
 import { JobProcessor } from "./jobProcessor";
 import { UIManager } from "./uiManager";
 import { JobListManager } from "./jobListManager";
@@ -19,7 +18,14 @@ class ContentController {
     ContentController.instance.start();
   }
 
+  public static restart(): void {
+    if (!ContentController.instance) return;
+    ContentController.instance.start();
+  }
+
   private async start(): Promise<void> {
+    console.log("[ContentController] Starting...");
+
     this.uiManager = new UIManager(this.handleRefresh.bind(this));
 
     try {
@@ -35,12 +41,6 @@ class ContentController {
       this.processor = new JobProcessor(this.uiManager);
 
       this.initialize();
-
-      chrome.runtime.onMessage.addListener((message: CommandMessage) => {
-        if (message.type === CommandType.URL_UPDATED) {
-          this.initialize();
-        }
-      });
     } catch (error) {
       console.error(
         "[ContentController] Failed to initialize core components:",
@@ -51,6 +51,23 @@ class ContentController {
 
   private async initialize(): Promise<void> {
     try {
+      const response = await chrome.runtime.sendMessage({
+        type: "GET_AUTH_STATUS",
+      });
+      const { isLoggedIn, subscribed } = response;
+      const { aiSummaryEnabled } = (await chrome.storage.sync.get([
+        "aiSummaryEnabled",
+      ])) || { aiSummaryEnabled: false };
+
+      console.log("Test", isLoggedIn, subscribed, aiSummaryEnabled);
+      if (isLoggedIn && !subscribed) {
+        this.uiManager?.renderUnsuscribed();
+        return;
+      }
+      if (!aiSummaryEnabled || !isLoggedIn || !subscribed) {
+        this.uiManager?.hide();
+        return;
+      }
       const jobId = await this.findActiveJobId();
 
       if (!jobId || jobId === this.currentJobId) {
@@ -112,3 +129,8 @@ if (document.readyState === "loading") {
 } else {
   ContentController.main();
 }
+
+chrome.storage.sync.onChanged.addListener(() => {
+  console.log("[ContentController] Storage changed, reinitializing...");
+  ContentController.restart();
+});

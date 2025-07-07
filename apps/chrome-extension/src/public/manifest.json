@@ -25,5 +25,13 @@
                 "content.js"
             ]
         }
-    ]
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "externally_connectable": {
+        "matches": [
+            "http://localhost:5173/*"
+        ]
+    }
 }

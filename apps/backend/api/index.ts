@@ -16,6 +16,44 @@ console.log("Initializing backend API...");
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  // Add your Vercel deployment URL for the marketing page if it's different
+  // 'https://your-marketing-page.com'
+];
+
+// Add the Chrome extension origin only in production
+if (process.env.NODE_ENV === "production") {
+  // It's better to use a specific ID from an env variable
+  // for security, but this will work for now.
+  allowedOrigins.push("chrome-extension://pdmlnfggfnomjdenapbgaehgbbmaaofg");
+}
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // The `!origin` part allows server-to-server requests and REST tools like Postman.
+      // In development, allow any origin for simplicity.
+      if (
+        process.env.NODE_ENV !== "production" ||
+        !origin ||
+        allowedOrigins.includes(origin)
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+// --- END: CORRECTED COR
+
+app.use(clerkMiddleware());
+app.use(express.json());
+
 const requiredEnvVars = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
@@ -28,7 +66,6 @@ const requiredEnvVars = [
   "REDIS_URL",
 ] as const;
 
-console.log(process.env);
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);
@@ -36,7 +73,7 @@ for (const envVar of requiredEnvVars) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-05-28.basil",
+  apiVersion: "2025-06-30.basil",
 });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -131,74 +168,93 @@ async function syncStripeDataToKV(
   }
 }
 
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? ["https://<YOUR_CHROME_EXTENSION_URL>", "http://localhost:5173"]
-        : [
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "chrome-extension://*",
-          ],
-    credentials: true,
-  })
-);
-
-app.use(clerkMiddleware());
-
-app.use("/api/webhooks", express.raw({ type: "application/json" }));
-app.use(express.json());
-
 app.get("/api/health", (req, res) => {
-  console.log("[HEALTH] /api/health endpoint was hit successfully.");
   res.json({ status: "operational", timestamp: new Date().toISOString() });
 });
 
-app.post("/api/webhooks/clerk", async (req, res) => {
-  try {
-    const webhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+app.post(
+  "/api/webhooks/clerk",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    try {
+      const webhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
-    const payload = webhook.verify(req.body, {
-      "svix-id": req.headers["svix-id"] as string,
-      "svix-timestamp": req.headers["svix-timestamp"] as string,
-      "svix-signature": req.headers["svix-signature"] as string,
-    });
+      const payload = webhook.verify(req.body, {
+        "svix-id": req.headers["svix-id"] as string,
+        "svix-timestamp": req.headers["svix-timestamp"] as string,
+        "svix-signature": req.headers["svix-signature"] as string,
+      });
 
-    const { type, data } = payload as any;
+      const { type, data } = payload as any;
+      console.log(`[CLERK WEBHOOK] Received event: ${payload}`);
+      console.log(type);
+      console.log(data);
+      if (type === "user.created") {
+        const { id: userId, primary_email_address_id } = data;
+        const primary_email_address = data.email_addresses.find(
+          (email: any) => email.id === primary_email_address_id
+        )?.email_address;
 
-    if (type === "user.created") {
-      const { id: userId, primary_email_address } = data;
+        if (!primary_email_address) {
+          console.error(
+            "[CLERK WEBHOOK] No email address found for user:",
+            userId
+          );
+          res.status(400).json({ error: "Email address required" });
+          return;
+        }
 
-      if (!primary_email_address?.email_address) {
-        console.error(
-          "[CLERK WEBHOOK] No email address found for user:",
-          userId
+        const stripeCustomer = await stripe.customers.create({
+          email: primary_email_address,
+          metadata: {
+            clerkUserId: userId,
+          },
+        });
+
+        await kv.set(`stripe:user:${userId}`, stripeCustomer.id);
+
+        console.log(
+          `[CLERK WEBHOOK] Created Stripe customer ${stripeCustomer.id} for user ${userId}`
         );
-        res.status(400).json({ error: "Email address required" });
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("[CLERK WEBHOOK] Error processing webhook:", error);
+      res.status(400).json({ error: "Webhook signature verification failed" });
+    }
+  }
+);
+
+app.post(
+  "/api/webhooks/stripe",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    try {
+      const sig = req.headers["stripe-signature"] as string;
+
+      if (!sig) {
+        res.status(400).json({ error: "Missing stripe signature" });
         return;
       }
 
-      const stripeCustomer = await stripe.customers.create({
-        email: primary_email_address.email_address,
-        metadata: {
-          clerkUserId: userId,
-        },
-      });
-
-      await kv.set(`stripe:user:${userId}`, stripeCustomer.id);
-
-      console.log(
-        `[CLERK WEBHOOK] Created Stripe customer ${stripeCustomer.id} for user ${userId}`
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET!
       );
-    }
 
-    res.json({ received: true });
-  } catch (error) {
-    console.error("[CLERK WEBHOOK] Error processing webhook:", error);
-    res.status(400).json({ error: "Webhook signature verification failed" });
+      console.log(`[STRIPE WEBHOOK] Processing event: ${event.type}`);
+
+      await processEvent(event);
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("[STRIPE WEBHOOK] Error processing webhook:", error);
+      res.status(400).json({ error: "Webhook processing failed" });
+    }
   }
-});
+);
 
 app.post(
   "/api/stripe/create-checkout-session",
@@ -251,8 +307,8 @@ app.post(
           },
         ],
         mode: "subscription",
-        success_url: `${req.headers.origin}/success`,
-        cancel_url: `${req.headers.origin}/pricing`,
+        success_url: `http://localhost:5173/subscription-success`,
+        cancel_url: `http://localhost:5173/subscription-error`,
       });
 
       res.json({ url: checkout.url });
@@ -263,74 +319,44 @@ app.post(
   }
 );
 
-app.get("/api/success", requireAuth(), async (req, res) => {
+app.post("/api/stripe/cancel-subscription", requireAuth(), async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
-
-    if (!stripeCustomerId) {
-      res.redirect("/");
-      return;
-    }
+    const { subscriptionId } = req.body;
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    await syncStripeDataToKV(stripeCustomerId as string);
 
-    res.redirect("/dashboard");
-  } catch (error) {
-    console.error("[SUCCESS] Error processing success:", error);
-    res.redirect("/");
-  }
-});
-
-app.post("/api/webhooks/stripe", async (req, res) => {
-  try {
-    const sig = req.headers["stripe-signature"] as string;
-
-    if (!sig) {
-      res.status(400).json({ error: "Missing stripe signature" });
+    if (!subscriptionId) {
+      res.status(400).json({ error: "Subscription ID is required" });
       return;
     }
 
-    const event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
+    await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
 
-    console.log(`[STRIPE WEBHOOK] Processing event: ${event.type}`);
-
-    await processEvent(event);
-
-    res.json({ received: true });
+    res.json({ success: true });
   } catch (error) {
-    console.error("[STRIPE WEBHOOK] Error processing webhook:", error);
-    res.status(400).json({ error: "Webhook processing failed" });
+    console.error("[STRIPE CANCEL] Error canceling subscription:", error);
+    res.status(500).json({ error: "Failed to cancel subscription" });
   }
 });
 
-async function processEvent(event: Stripe.Event) {
-  if (!allowedEvents.includes(event.type)) return;
-
-  const { customer: customerId } = event?.data?.object as {
-    customer: string;
-  };
-
-  if (typeof customerId !== "string") {
-    throw new Error(
-      `[STRIPE HOOK] Customer ID isn't string.\nEvent type: ${event.type}`
-    );
-  }
-
-  return await syncStripeDataToKV(customerId);
-}
-
 app.get("/api/subscription-status", requireAuth(), async (req, res) => {
   try {
+    console.log("[SUBSCRIPTION STATUS] Fetching status for user");
+
     const { userId } = getAuth(req);
+    console.log("[SUBSCRIPTION STATUS] User ID:", userId);
+
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     const stripeCustomerId = await kv.get(`stripe:user:${userId}`);
 
     if (!stripeCustomerId) {
@@ -338,12 +364,8 @@ app.get("/api/subscription-status", requireAuth(), async (req, res) => {
       return;
     }
 
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-
     const subData = await kv.get(`stripe:customer:${stripeCustomerId}`);
+    console.log("[SUBSCRIPTION STATUS] Subscription data:", subData);
     res.json(subData || { status: "none" });
   } catch (error) {
     console.error("[SUBSCRIPTION STATUS] Error fetching status:", error);
@@ -422,6 +444,23 @@ app.post("/api/gemini-proxy", requireAuth(), async (req, res) => {
     }
   }
 });
+
+async function processEvent(event: Stripe.Event) {
+  if (!allowedEvents.includes(event.type)) return;
+
+  const { customer: customerId } = event?.data?.object as {
+    customer: string;
+  };
+  console.log("This is the event");
+  console.log(event);
+  if (typeof customerId !== "string") {
+    throw new Error(
+      `[STRIPE HOOK] Customer ID isn't string.\nEvent type: ${event.type}`
+    );
+  }
+
+  return await syncStripeDataToKV(customerId);
+}
 
 app.use(
   (

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkedIn JobLens AI</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="header">
+        <h1 class="title">LinkedIn JobLens AI</h1>
+      </div>
+      <div id="loading-container">
+        <div class="spinner"></div>
+      </div>
+      <div id="app-content" class="view" style="display: none">
+        <div>
+          <div class="setting-group">
+            <div class="setting-group-header">
+              <label class="setting-label"
+                >How should I show those job statuses ?</label
+              >
+            </div>
+            <div class="sub-setting">
+              <span>Viewed</span>
+              <div class="radio-group">
+                <label
+                  ><input
+                    type="radio"
+                    name="viewedJobs"
+                    value="highlight"
+                    checked
+                  /><span>Highlight</span></label
+                >
+                <label
+                  ><input type="radio" name="viewedJobs" value="hide" /><span
+                    >Hide</span
+                  ></label
+                >
+              </div>
+            </div>
+            <div class="sub-setting">
+              <span>Applied</span>
+              <div class="radio-group">
+                <label
+                  ><input
+                    type="radio"
+                    name="appliedJobs"
+                    value="highlight"
+                    checked
+                  /><span>Highlight</span></label
+                >
+                <label
+                  ><input type="radio" name="appliedJobs" value="hide" /><span
+                    >Hide</span
+                  ></label
+                >
+              </div>
+            </div>
+            <div class="sub-setting">
+              <span>Dismissed</span>
+              <div class="radio-group">
+                <label
+                  ><input
+                    type="radio"
+                    name="dismissedJobs"
+                    value="highlight"
+                    checked
+                  /><span>Highlight</span></label
+                >
+                <label
+                  ><input type="radio" name="dismissedJobs" value="hide" /><span
+                    >Hide</span
+                  ></label
+                >
+              </div>
+            </div>
+          </div>
+
+          <a id="ai-summary-link" class="setting-link">
+            <div id="ai-summary-setting" class="setting">
+              <label class="setting-label" for="ai-summary-toggle">
+                AI Summarization <span class="pro-badge">PRO</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="ai-summary-toggle" />
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <p id="pro-subscription-end-date"></p>
+          </a>
+        </div>
+        <div id="log-in-button">
+          <a class="button">Login or Sign Up</a>
+        </div>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

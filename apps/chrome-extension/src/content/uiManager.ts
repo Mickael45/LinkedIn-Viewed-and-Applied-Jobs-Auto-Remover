@@ -54,7 +54,13 @@ export class UIManager {
 
   public async renderLoadingState(): Promise<void> {
     const contentArea = await this.getOrCreateContentArea();
-    if (!contentArea) return;
+    const mainContainer = document.getElementById(
+      DOM_SELECTORS.SUMMARY_CONTAINER_ID
+    );
+    console.log("Before Rendering loading state...");
+    if (!contentArea || !mainContainer) return;
+    console.log("Rendering loading state...");
+    mainContainer.style.display = "block";
 
     this.setRefreshButtonState(false);
 
@@ -84,6 +90,34 @@ export class UIManager {
     );
     mainContainer?.remove();
     this.refreshButton = null;
+  }
+
+  public renderUnsuscribed(): void {
+    const contentArea = document.querySelector<HTMLElement>(
+      `#${DOM_SELECTORS.SUMMARY_CONTAINER_ID} .content-area`
+    );
+    if (!contentArea) return;
+
+    contentArea.innerHTML = `
+        <div class="unsuscribed-content">
+            <h4>AI Summary Unavailable</h4>
+            <p>Please subscribe to access AI-powered job analysis.</p>
+            <p>Click the button below to manage your subscription.</p>
+            <a class="manage-subscription-button" href="http://localhost:5173/#pricing" target="_blank">
+                Go Pro <span class="pro-badge">PRO</span>
+            </a>
+        </div>
+    `;
+    this.setRefreshButtonState(false);
+  }
+
+  public hide(): void {
+    const mainContainer = document.getElementById(
+      DOM_SELECTORS.SUMMARY_CONTAINER_ID
+    );
+    if (mainContainer) {
+      mainContainer.style.display = "none";
+    }
   }
 
   private injectStyles(): void {

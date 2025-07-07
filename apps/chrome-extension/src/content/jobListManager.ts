@@ -82,9 +82,8 @@ export class JobListManager {
   };
 
   public applyViewedStyle = (jobItem: HTMLLIElement): void => {
-    if (!jobItem.style.filter && jobItem.style.backgroundColor === "") {
-      jobItem.style.backgroundColor = "rgba(243, 238, 230, 1)";
-    }
+    this.removeStyles(jobItem);
+    jobItem.style.backgroundColor = "rgba(243, 238, 230, 1)";
   };
 
   public removeStyles = (jobItem: HTMLLIElement): void => {
@@ -92,25 +91,44 @@ export class JobListManager {
     jobItem.style.filter = "";
     jobItem.style.opacity = "1";
     jobItem.style.transform = "";
+    jobItem.style.display = "block";
   };
-  private styleJobItem = (jobItem: HTMLLIElement): void => {
+
+  public applyHiddenStyle = (jobItem: HTMLLIElement): void => {
+    this.removeStyles(jobItem);
+    jobItem.style.display = "none";
+  };
+
+  private styleJobItem = async (jobItem: HTMLLIElement): Promise<void> => {
     const jobId = jobItem.dataset.occludableJobId;
     if (!jobId) return;
 
     if (this.dismissedJobIds.has(jobId)) {
-      this.applyDismissedStyle(jobItem);
-      return;
+      const { dismissedJobs } =
+        (await chrome.storage.sync.get(["dismissedJobs"])) || "highlight";
+
+      return dismissedJobs === "highlight"
+        ? this.applyDismissedStyle(jobItem)
+        : this.applyHiddenStyle(jobItem);
     }
 
     const isApplied = jobItem.innerText.toLowerCase().includes("applied");
     const isViewed = jobItem.innerText.toLowerCase().includes("viewed");
 
     if (isApplied) {
-      this.applyAppliedStyle(jobItem);
+      const { appliedJobs } =
+        (await chrome.storage.sync.get(["appliedJobs"])) || "highlight";
+
+      return appliedJobs === "highlight"
+        ? this.applyAppliedStyle(jobItem)
+        : this.applyHiddenStyle(jobItem);
     } else if (isViewed) {
-      this.applyViewedStyle(jobItem);
-    } else {
-      this.removeStyles(jobItem);
+      const { viewedJobs } =
+        (await chrome.storage.sync.get(["viewedJobs"])) || "highlight";
+
+      return viewedJobs === "highlight"
+        ? this.applyViewedStyle(jobItem)
+        : this.applyHiddenStyle(jobItem);
     }
   };
 

@@ -1,5 +1,6 @@
 import { useUser, useClerk } from "@clerk/clerk-react";
 import { User, LogOut, Settings } from "lucide-react";
+import { Icon } from "./Icon";
 
 interface HeaderProps {
   onAuthClick: (mode: "signin" | "signup") => void;
@@ -14,7 +15,10 @@ export default function Header({ onAuthClick }: HeaderProps) {
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">JL</span>
+            <Icon
+              name="Target"
+              className="w-4 h-4 text-white animate-spin-slow"
+            />
           </div>
           <span className="text-white font-semibold text-lg">
             LinkedIn JobLens AI
@@ -49,7 +53,7 @@ export default function Header({ onAuthClick }: HeaderProps) {
                 <div className="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                   <div className="p-2">
                     <button
-                      onClick={() => signOut()}
+                      onClick={() => signOut(() => console.log("Logged out"))}
                       className="w-full flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200"
                     >
                       <LogOut className="w-4 h-4" />
